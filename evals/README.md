@@ -34,3 +34,7 @@ Ground truth is in `db/db.json`.
 - The model is not deterministic. `dataset.evaluate_sync(ask, repeat=3)` shows whether a case is stable.
 
 Docs: https://pydantic.dev/docs/ai/evals/
+
+## Scoreboard
+
+`uv run python -m evals.scoreboard --repeat 3` runs your cases and prints pass rate, cost per case and mean latency against `evals/baseline.json`. Add `--save` to make the current run the baseline (do this after you add cases).
