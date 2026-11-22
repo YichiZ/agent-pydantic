@@ -3,4 +3,4 @@
 import os
 from pathlib import Path
 
-os.environ['TAU2_DATA_DIR'] = str(Path(__file__).parent / 'data')
+os.environ['BANK_DB_DIR'] = str(Path(__file__).parent / 'data')

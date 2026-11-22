@@ -16,7 +16,7 @@ uv run python -m evals.support_evals
 
 ## Customers worth using
 
-Ground truth is in `$TAU2_DATA_DIR/tau2/domains/banking_knowledge/db.json`.
+Ground truth is in `db/db.json`.
 
 | Customer id | Name | Has |
 |---|---|---|

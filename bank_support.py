@@ -1,7 +1,7 @@
 """Bank support agent (after https://pydantic.dev/docs/ai/overview/) backed by a local workspace.
 
-The workspace is the tau2-bench `banking_knowledge` domain; the agent reads its `db.json`
-through `ctx.workspace`.
+The workspace is `./db`, which holds the tau2-bench `banking_knowledge` database; the agent
+reads its `db.json` through `ctx.workspace`.
 """
 
 import asyncio
@@ -18,19 +18,16 @@ from bank_db import Account, BankDb, CreditCardAccount, Transaction, UnknownAcco
 
 load_dotenv()
 
-DATA_DIR_ENV = 'TAU2_DATA_DIR'
-DOMAIN_PATH = Path('tau2') / 'domains' / 'banking_knowledge'
+DB_DIR_ENV = 'BANK_DB_DIR'  # override the workspace directory, e.g. with a test fixture
+DEFAULT_DB_DIR = Path(__file__).parent / 'db'
 DB_FILE = 'db.json'
 MAX_TRANSACTIONS = 50
 
 
 def workspace_dir() -> Path:
-    root = os.environ.get(DATA_DIR_ENV)
-    if not root:
-        raise RuntimeError(f'Set {DATA_DIR_ENV} to the tau2-bench `data` directory (see README).')
-    path = Path(root).expanduser() / DOMAIN_PATH
+    path = Path(os.environ.get(DB_DIR_ENV) or DEFAULT_DB_DIR).expanduser()
     if not (path / DB_FILE).is_file():
-        raise RuntimeError(f'{path / DB_FILE} not found; check {DATA_DIR_ENV}.')
+        raise RuntimeError(f'{path / DB_FILE} not found; check {DB_DIR_ENV}.')
     return path
 
 

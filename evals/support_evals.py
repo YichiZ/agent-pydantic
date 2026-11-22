@@ -2,8 +2,8 @@
 
     uv run python -m evals.support_evals
 
-These call the real model against the real tau2 data, so they need ANTHROPIC_API_KEY and
-TAU2_DATA_DIR (both read from .env). This file is yours: add cases and evaluators below.
+These call the real model against the real data in ./db, so they need ANTHROPIC_API_KEY
+(read from .env). This file is yours: add cases and evaluators below.
 """
 
 from dataclasses import dataclass

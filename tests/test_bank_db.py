@@ -6,7 +6,7 @@ import pytest
 
 from bank_db import BankDb, UnknownAccountError, UnknownCustomerError
 
-FIXTURE = Path(__file__).parent / 'data' / 'tau2' / 'domains' / 'banking_knowledge' / 'db.json'
+FIXTURE = Path(__file__).parent / 'data' / 'db.json'
 
 
 @pytest.fixture(scope='module')
