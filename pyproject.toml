@@ -1,0 +1,19 @@
+[project]
+name = "agent-pydantic"
+version = "0.1.0"
+description = "Bank support agent built with Pydantic AI, backed by a local workspace"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pydantic-ai>=2.71.0",
+    "python-dotenv>=1.2.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
