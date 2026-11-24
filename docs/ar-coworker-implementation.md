@@ -1,7 +1,8 @@
 # AR coworker: implementation plan
 
-Status: 2026-11-23. Piece A, the eval set, is built: the database, 20 tasks, splits, policy text
-and documents are in `db/`. No Python for the AR agent exists yet. The design is in [ar-coworker-design.md](ar-coworker-design.md).
+Status: 2026-11-24. All six pieces are built and a baseline is saved: 20 of 20 tasks pass on each
+of 4 trials on Opus 5.5. This document is the plan as written before the build; where the build
+differs, the code and `README.md` are right. The design is in [ar-coworker-design.md](ar-coworker-design.md).
 
 ## 1. Summary
 
@@ -112,10 +113,9 @@ Tasks 10, 19 and 20 share the Fennick account on purpose: they are the same disp
 moments. Every other task has an account to itself, except 4 and 16, which are the same payment
 event delivered once and twice.
 
-Tasks 13 to 18 need rows the database does not have yet: five customers (Kestrel, Larkspur,
-Mossgate, Nolan, Orchard) with a contact each, six invoices, one payment with a hostile
-remittance, one dispute, one open promise and two messages. Tasks 16, 19 and 20 need
-none; they use `initial_state`. After this the database holds 18 customers and 26 invoices.
+Tasks 13, 14, 15, 17 and 18 each have their own account in the database. Tasks 16, 19 and 20
+need no rows of their own; they use `initial_state`. The database holds 18 customers and 26
+invoices.
 
 ### 2.5 The other files in the eval set
 

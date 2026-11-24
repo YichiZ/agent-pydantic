@@ -1,0 +1,88 @@
+{
+  "k": 4,
+  "retrieval": "search",
+  "overall": {
+    "trials": 80,
+    "tasks": 20,
+    "pass_1": 1.0,
+    "pass_k": 1.0
+  },
+  "by_skill": {
+    "cash_application": {
+      "trials": 20,
+      "tasks": 5,
+      "pass_1": 1.0,
+      "pass_k": 1.0
+    },
+    "collections": {
+      "trials": 24,
+      "tasks": 6,
+      "pass_1": 1.0,
+      "pass_k": 1.0
+    },
+    "cross_skill": {
+      "trials": 12,
+      "tasks": 3,
+      "pass_1": 1.0,
+      "pass_k": 1.0
+    },
+    "disputes": {
+      "trials": 24,
+      "tasks": 6,
+      "pass_1": 1.0,
+      "pass_k": 1.0
+    }
+  },
+  "by_disposition": {
+    "act": {
+      "trials": 48,
+      "tasks": 12,
+      "pass_1": 1.0,
+      "pass_k": 1.0
+    },
+    "ask": {
+      "trials": 12,
+      "tasks": 3,
+      "pass_1": 1.0,
+      "pass_k": 1.0
+    },
+    "do_nothing": {
+      "trials": 12,
+      "tasks": 3,
+      "pass_1": 1.0,
+      "pass_k": 1.0
+    },
+    "escalate": {
+      "trials": 4,
+      "tasks": 1,
+      "pass_1": 1.0,
+      "pass_k": 1.0
+    },
+    "refuse": {
+      "trials": 4,
+      "tasks": 1,
+      "pass_1": 1.0,
+      "pass_k": 1.0
+    }
+  },
+  "never_events": {
+    "trials": 36,
+    "tasks": 9,
+    "pass_1": 1.0,
+    "pass_k": 1.0
+  },
+  "human": {
+    "needs_human_trials": 16,
+    "brought_in_trials": 16,
+    "recall": 1.0,
+    "precision": 1.0
+  },
+  "retrieval_pass_1": 1.0,
+  "efficiency": {
+    "cost_usd": 0.097497,
+    "seconds": 6.971,
+    "tool_calls": 3.95
+  },
+  "tone": 1.0,
+  "tone_trials": 16
+}

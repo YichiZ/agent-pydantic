@@ -62,6 +62,23 @@ def judged_text(task_id: str, customer_id: str, start: ArDb, actual: ArDb) -> st
 
 
 def ledger_facts(db: ArDb, customer_id: str) -> str:
-    invoices = [f'- {i.invoice_id}: due {i.due_date}, balance {balance(db, i.invoice_id):.2f}'
-                f'{", collections paused" if i.collections_paused else ""}' for i in open_invoices(db, customer_id)]
-    return '\n'.join([f'Today is {db.today}. Customer: {db.customer(customer_id).name}. Open invoices:', *invoices])
+    """Everything a correct reminder may truthfully mention: who to address, and each open invoice's history."""
+    family = set(payer_family(db, customer_id))
+    customer = db.customer(customer_id)
+    contacts = ', '.join(sorted(c.name for c in db.contacts.values() if c.customer_id in family))
+    lines = [f'Today is {db.today}. Customer: {customer.name}. Currency: {customer.currency}. Contacts: {contacts}.',
+             'Open invoices:']
+    for invoice in open_invoices(db, customer_id):
+        lines.append(f'- {invoice.invoice_id} ({invoice.po_number}): amount {invoice.amount:.2f}, due '
+                     f'{invoice.due_date}, balance {balance(db, invoice.invoice_id):.2f}'
+                     f'{", collections paused" if invoice.collections_paused else ""}')
+        lines.extend(_invoice_history(db, invoice.invoice_id))
+    return '\n'.join(lines)
+
+
+def _invoice_history(db: ArDb, invoice_id: str) -> list[str]:
+    disputes = [f'  - dispute {d.dispute_id}: {d.category.value}, {d.amount:.2f}, {d.status.value}. Claim: {d.claim}'
+                for d in db.disputes.values() if d.invoice_id == invoice_id]
+    credits = [f'  - credit {c.credit_id}: {c.amount:.2f}, {c.status.value}, for {c.reason}'
+               for c in db.credits.values() if c.invoice_id == invoice_id]
+    return [*disputes, *credits]

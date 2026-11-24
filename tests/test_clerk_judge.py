@@ -52,3 +52,12 @@ def test_ledger_facts_name_the_open_invoices():
     store = initialize(TASKS['task_12'])
     facts = judge.ledger_facts(store.db, 'cus_juniper')
     assert 'Today is 2026-11-16' in facts and 'INV-1701' in facts and 'INV-1702' in facts and 'paused' in facts
+
+
+def test_ledger_facts_give_the_judge_what_a_correct_reminder_may_mention():
+    """Found on the first live run: the judge marked down a correct reminder for naming the contact, the PO and
+    a credit, because the facts it was given left them out."""
+    store = initialize(TASKS['task_11'])
+    facts = judge.ledger_facts(store.db, 'cus_garnet')
+    for expected in ('Wen Zhao', 'USD', 'PO-5601', '600.00', 'pricing_variance', '37.60'):
+        assert expected in facts, expected
