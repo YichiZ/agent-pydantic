@@ -431,10 +431,10 @@ The model sees tokens in place of personal data. Tools detokenize at the send bo
 
 ## 6. Walkthrough: the motivating bug
 
-1. A dispute on invoice INV-1601 is resolved; the disputes capability proposes a $600 credit. It is over
+1. A dispute on invoice INV-1601 is resolved; the agent proposes a $600 credit with the disputes capability. It is over
    the $500 limit, so a person approves it. The outbox posts it and the ledger shows $9,400 due.
 2. The next day the aging timer fires for the same account. The run starts, refreshes the ledger,
-   and the collections capability calls `amount_due`, which returns $9,400.
+   and the agent, with the collections capability loaded, calls `amount_due`, which returns $9,400.
 3. `send_message` goes to policy. Policy recomputes the amount, sees it matches, sees no open
    dispute, and allows it.
 
