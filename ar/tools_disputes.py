@@ -56,7 +56,8 @@ def open_dispute(store: Store, customer_id: str, invoice_id: str, category: str,
 
 
 def pause_collections(store: Store, customer_id: str, invoice_id: str, reason: str) -> WriteResult:
-    """Pause collections on an invoice. Nothing happens if it is already paused."""
+    """Opening a dispute is what pauses collections. This changes nothing on an invoice with an open dispute (it is
+    already paused) and is refused (P1) on an invoice without one."""
     db = store.db
     invoice_id, reason = parse_text(invoice_id, 'invoice_id'), parse_text(reason, 'reason')
     require(check_pause_collections(db, customer_id, invoice_id=invoice_id))

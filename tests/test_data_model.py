@@ -92,8 +92,14 @@ def test_next_id_continues_each_tables_numbering(db):
     assert next_id(db, 'action_log') == 'act_7014'
 
 
+def test_next_id_starts_an_empty_table_at_its_first_number(db):
+    tables = {name: db.table(name) for name in ArDb.model_fields}
+    empty = ArDb.model_validate({**tables, 'approvals': {}, 'credits': {}})
+    assert (next_id(empty, 'approvals'), next_id(empty, 'credits')) == ('apr_8000', 'crd_4001')
+
+
 def test_next_id_refuses_unnumbered_ids_and_unknown_tables(db):
-    with pytest.raises(ValueError, match='customers'):
+    with pytest.raises(UnknownTableError, match='customers'):  # no tool adds customers, so it has no sequence
         next_id(db, 'customers')
     with pytest.raises(UnknownTableError, match='nope'):
         next_id(db, 'nope')

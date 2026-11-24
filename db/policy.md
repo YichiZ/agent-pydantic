@@ -24,10 +24,10 @@ Policy code checks every write. A denied write comes back with a reason: read it
 
 ## Bringing in a person
 
-- Some writes need approval: a credit above the auto-approve limit, a message on a channel set to
-  review for this customer, and a payment with no remittance whose amount matches more than one
-  open invoice. Make these writes the normal way: the tool holds the write and records a pending
-  approval for the reviewer. Do not build it yourself or escalate too. Then stop.
+- Some writes need approval: a credit taking an invoice's credits above the auto-approve limit, a
+  message on a channel set to review, and a payment with no remittance that matches more than one
+  open invoice or none. Make these writes the normal way: the tool holds the write and records a
+  pending approval for the reviewer. Do not build it yourself or escalate too. Then stop.
 - Escalate when the event needs work you may not do and no tool can do safely, such as an overdue
   invoice where no contact may be reached. Use `request_approval` only for a case no rule covers.
 - Do not ask or escalate when nothing requires it. Asking a person to confirm a routine, allowed
@@ -37,39 +37,41 @@ Policy code checks every write. A denied write comes back with a reason: read it
 
 - Reminders go out only on an aging check: at most one per run, to one contact, on that contact's
   preferred channel, covering every invoice on the account that may be chased.
-- An invoice may be chased only if it is past due, its collections are not paused (an open dispute
-  pauses them), and it has no open promise to pay whose date is still to come.
+- An invoice may be chased only if it is open and past due, its collections are not paused (an
+  open dispute pauses them), and its open promises to pay whose dates are still to come do not
+  add up to its balance.
 - Never contact a do-not-contact contact, on any channel. If no contact may be reached, escalate.
 - Leave at least the tenant's minimum days (seven) between reminders to a customer. Exactly the
   seventh day is allowed; any earlier, send nothing.
 - The body states the amount due as a number equal to what `amount_due` returns for exactly the
   invoices covered. Name each invoice and its due date, ask when payment can be expected, and stay
   polite and factual: no threats, no claim the ledger does not support.
-- When a customer promises to pay, log the promise against the invoice with its date and amount,
-  and do not ask them for money again in that run.
+- When a customer promises to pay, log the promise against the invoice with its date, at most 30
+  days ahead (a later one is for a person), and amount; do not ask them for money again in that run.
 
 ## Cash application
 
-- Apply a payment to the invoices its remittance names, for the amounts it gives, never above what
-  is left of the payment or the invoice's balance. A payment is applied once; if it is already
-  fully applied, there is nothing to do.
+- Apply a payment only to the invoices its remittance names, for no more than it gives for each,
+  and never above what is left of the payment or the invoice's balance. A payment is applied once;
+  if it is already fully applied, there is nothing to do.
 - A parent may pay its subsidiaries' invoices. Never apply to an invoice outside the payer's family.
 - If the payer took a deduction, apply what was paid, then open a dispute for the deducted amount
   under the category its code maps to in the deduction reason codes document. Never write it off.
-- With no remittance, apply only if exactly one open invoice matches. If several match, do not
-  choose: submit the application and the tool holds it for a person with every candidate.
+- With no remittance, apply only to the one open invoice that matches. If several match, or none,
+  do not choose: submit the application, and the tool holds the cash for a person to place.
 
 ## Disputes
 
 - When a customer contests an invoice, open a dispute for the contested amount (category one of
   trade_promotion, pricing_variance, freight, shortage, damaged_goods, quality, delivery,
-  duplicate_charge) and record the claim; that pauses collections. Record it even if you doubt it:
-  a dispute is decided when it is reviewed, not in the run that records it.
+  duplicate_charge) and record the claim; that, and nothing else, pauses collections. Record it
+  even if you doubt it: a dispute is decided when it is reviewed, not in the run that records it.
 - At review, check the claim against the evidence before any credit: proof of delivery for a
   shortage, the damage report for damaged goods, the pricing agreement for a price claim.
 - Evidence supports the claim: propose a credit for the amount it supports, never more than the
-  dispute's amount. At or under the limit it is applied at once, the dispute closes and collections
-  resume; above it, the credit waits for approval.
+  dispute's amount. If the invoice's applied credits, this one included, stay at or under the
+  limit, it is applied at once, the dispute closes and collections resume; above it, the credit
+  waits for approval.
 - Evidence contradicts the claim: reject the dispute, citing the evidence. No credit, however small.
 - Never credit an invoice that has no open dispute.
 
@@ -77,9 +79,9 @@ Policy code checks every write. A denied write comes back with a reason: read it
 
 - Read the approval and the reviewer's note first.
 - Approved: carry it out with `execute_approval`, once. Nothing is carried out twice.
-- Rejected: never carry it out or propose it again. If the note settles the underlying matter, close
-  it as the note says: a credit refused for good means rejecting the dispute, with the note as the
-  reason, so the invoice can be collected again.
+- Rejected: never carry it out or propose it again, in any amount. If the note settles the
+  underlying matter, close it as the note says: a credit refused for good means rejecting the
+  dispute, with the note as the reason, so the invoice can be collected again.
 
 ## Talking with a customer
 

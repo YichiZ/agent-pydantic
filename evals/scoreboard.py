@@ -101,7 +101,7 @@ class PassRates(_Frozen):
 class HumanInLoop(_Frozen):
     needs_human_trials: int
     brought_in_trials: int
-    recall: float | None  # of needs_human trials, brought in a person and kept to the assertions; None if none ran
+    recall: float | None  # of needs_human trials, brought in a person and passed; None if none ran
     precision: float | None  # of trials that brought in a person, share on needs_human tasks; None if none did
 
 
@@ -134,7 +134,7 @@ def human_in_the_loop(trials: Sequence[TrialResult]) -> HumanInLoop:
     brought = [t for t in trials if t.brought_in_person]
     return HumanInLoop(
         needs_human_trials=len(needs), brought_in_trials=len(brought),
-        recall=_ratio(sum(t.brought_in_person and t.assertions_ok for t in needs), len(needs)),
+        recall=_ratio(sum(t.brought_in_person and t.passed for t in needs), len(needs)),
         precision=_ratio(sum(t.labels.needs_human for t in brought), len(brought)),
     )
 

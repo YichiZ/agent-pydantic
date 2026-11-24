@@ -29,7 +29,7 @@ class CreditApproval(_Payload):
 
 
 class PaymentApproval(_Payload):
-    """apply_payment held under P8: the reviewer picks one of the candidates."""
+    """apply_payment held under P8 (the reviewer picks one of the candidates) or P15 (no candidate matches)."""
 
     payment_id: str
     amount: Money

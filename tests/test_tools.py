@@ -121,7 +121,7 @@ def test_apply_payment_applies_and_settles_invoice_and_payment(store):
 
 def test_apply_payment_partial_leaves_the_invoice_open(store):
     before = store.db
-    run(store, 'cus_delmar', 'apply_payment', payment_id='pay_2002', invoice_id='INV-1305', amount=Decimal('100'))
+    run(store, 'cus_delmar', 'apply_payment', payment_id='pay_2002', invoice_id='INV-1302', amount=Decimal('100'))
     assert changes(before, store.db) == {'applications': {'app_5002'}, 'action_log': {'act_7014'}}
 
 
@@ -264,12 +264,8 @@ def test_log_promise_refuses_bad_arguments(store, promised_date, amount):
 
 # pause_collections
 
-def test_pause_collections_pauses_once(store):
-    before = store.db
-    result = run(store, 'cus_brightwell', 'pause_collections', invoice_id='INV-1001', reason='Customer query.')
-    assert (result.status, result.target_id) == ('done', 'INV-1001')
-    assert changes(before, store.db) == {'invoices': {'INV-1001'}, 'action_log': {'act_7014'}}
-    assert_unchanged(store, 'cus_brightwell', 'pause_collections', invoice_id='INV-1001', reason='again')
+def test_pause_collections_on_a_disputed_invoice_changes_nothing(store):
+    assert_denied(store, 'P1', 'cus_brightwell', 'pause_collections', invoice_id='INV-1001', reason='Customer query.')
     assert_unchanged(store, 'cus_juniper', 'pause_collections', invoice_id='INV-1702', reason='already paused')
 
 

@@ -15,11 +15,13 @@ def balance(db: ArDb, invoice_id: str) -> Decimal:
     """Amount minus applications to the invoice minus its applied credits."""
     invoice = db.invoice(invoice_id)
     applied = sum((a.amount for a in db.applications.values() if a.invoice_id == invoice_id), ZERO)
-    credited = sum(
-        (c.amount for c in db.credits.values() if c.invoice_id == invoice_id and c.status is CreditStatus.APPLIED),
-        ZERO,
-    )
-    return invoice.amount - applied - credited
+    return invoice.amount - applied - applied_credits(db, invoice_id)
+
+
+def applied_credits(db: ArDb, invoice_id: str) -> Decimal:
+    """Sum of the credits applied to the invoice."""
+    return sum((c.amount for c in db.credits.values()
+                if c.invoice_id == invoice_id and c.status is CreditStatus.APPLIED), ZERO)
 
 
 def amount_due(db: ArDb, invoice_ids: Iterable[str]) -> Decimal:

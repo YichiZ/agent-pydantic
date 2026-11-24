@@ -6,7 +6,7 @@ holds for a person writes only a pending approval and says so.
 """
 
 from collections.abc import Sequence
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from ar.data_model import (
@@ -60,6 +60,7 @@ from ar.tools_disputes import apply_credit
 COVERED_BY_RULES = frozenset({'send_message', 'apply_payment', 'propose_credit'})
 DECISIONS = {'approved': ApprovalStatus.APPROVED, 'rejected': ApprovalStatus.REJECTED}
 CREDIT_AFTER = {ApprovalStatus.APPROVED: CreditStatus.APPROVED, ApprovalStatus.REJECTED: CreditStatus.REJECTED}
+MAX_PROMISE_DAYS = 30  # a promise holds off reminders (P12), so it may not reach further ahead than this
 
 
 def send_message(store: Store, customer_id: str, contact_id: str, channel: str, invoice_ids: Sequence[str],
@@ -68,7 +69,8 @@ def send_message(store: Store, customer_id: str, contact_id: str, channel: str, 
     review the draft is held for a person (P5)."""
     db = store.db
     contact_id, body = parse_text(contact_id, 'contact_id'), parse_text(body, 'body')
-    medium, ids = parse_choice(Channel, channel, 'channel'), parse_ids(invoice_ids, 'invoice_ids')
+    # Sorted, so the same reminder is stored the same whatever order the invoices were named in.
+    medium, ids = parse_choice(Channel, channel, 'channel'), tuple(sorted(parse_ids(invoice_ids, 'invoice_ids')))
     decision = check_send_message(db, customer_id, contact_id=contact_id, channel=medium, invoice_ids=ids, body=body)
     require(decision)
     draft = MessageDraft(contact_id=contact_id, channel=medium, invoice_ids=ids, amount=amount_due(db, ids), body=body)
@@ -92,12 +94,15 @@ def write_message(db: ArDb, draft: MessageDraft) -> tuple[ArDb, Message]:
 
 def apply_payment(store: Store, customer_id: str, payment_id: str, invoice_id: str,
                   amount: str | Decimal) -> WriteResult:
-    """Apply part or all of a payment to one invoice. A repeat returns the existing application; a payment with
-    no remittance that matches several invoices is held for a person with every candidate (P8)."""
+    """Apply part or all of a payment to one invoice, as its remittance says (P15). A repeat returns the existing
+    application; a payment with no remittance that matches several invoices (P8), or none (P15), is held for a
+    person with every candidate."""
     db = store.db
     payment_id, invoice_id = parse_text(payment_id, 'payment_id'), parse_text(invoice_id, 'invoice_id')
     applied = parse_money(amount, 'amount')
     require(check_scope(db, customer_id, db.payment(payment_id).customer_id, f'Payment {payment_id}'))
+    # ponytail: idempotent on (payment, invoice), so one payment cannot be applied to one invoice in two parts;
+    # key on an application sequence, or allow a top-up up to the remittance line, if that is ever needed.
     existing = next((a for a in db.applications.values()
                      if (a.payment_id, a.invoice_id) == (payment_id, invoice_id)), None)
     if existing is not None:
@@ -142,6 +147,9 @@ def log_promise(store: Store, customer_id: str, invoice_id: str, promised_date: 
     require_amount(promised, balance(db, invoice_id), 'amount', f'the balance of {invoice_id}')
     if when < db.today:
         raise InvalidArgumentError(f'promised_date {when} is in the past; today is {db.today}.')
+    if when > db.today + timedelta(days=MAX_PROMISE_DAYS):
+        raise InvalidArgumentError(f'promised_date {when} is more than {MAX_PROMISE_DAYS} days after today '
+                                   f'({db.today}); log no promise that far out, and escalate it to a person.')
     promise = Promise(promise_id=next_id(db, 'promises'), invoice_id=invoice_id, promised_date=when, amount=promised,
                       status=PromiseStatus.OPEN, source_message_id=None)
     return commit(store, db.with_rows('promises', {promise.promise_id: promise}), 'log_promise', promise,

@@ -18,14 +18,13 @@ from ar.data_model import (
     Approval,
     ApprovalStatus,
     ArDb,
-    DisputeStatus,
     InvoiceStatus,
     Row,
     next_id,
 )
 from ar.errors import InvalidArgumentError, PolicyDenied
 from ar.ledger import balance
-from ar.policy import Decision, Outcome
+from ar.policy import Decision, Outcome, has_open_dispute
 from ar.store import Store
 
 COWORKER = 'coworker'
@@ -69,7 +68,7 @@ def parse_ids(value: object, name: str) -> tuple[str, ...]:
     """A non-empty list of ids, duplicates dropped, order kept."""
     if isinstance(value, list | tuple) and value and all(isinstance(i, str) and i.strip() for i in value):
         return tuple(dict.fromkeys(value))
-    raise InvalidArgumentError(f'{name} must be a non-empty list of ids, like ["INV-1001"]; got {value!r}.')
+    raise InvalidArgumentError(f'{name} must be a non-empty list of ids, like ["INV-0000"]; got {value!r}.')
 
 
 def parse_choice[E: StrEnum](enum: type[E], value: object, name: str) -> E:
@@ -170,7 +169,6 @@ def mark_paid_if_settled(db: ArDb, invoice_id: str) -> ArDb:
 def resume_if_undisputed(db: ArDb, invoice_id: str) -> ArDb:
     """Unpause collections once the invoice has no open dispute left."""
     invoice = db.invoice(invoice_id)
-    disputed = any(d.invoice_id == invoice_id and d.status is DisputeStatus.OPEN for d in db.disputes.values())
-    if not invoice.collections_paused or disputed:
+    if not invoice.collections_paused or has_open_dispute(db, invoice_id):
         return db
     return db.with_rows('invoices', {invoice_id: invoice.model_copy(update={'collections_paused': False})})
