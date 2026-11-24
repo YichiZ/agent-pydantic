@@ -1,7 +1,6 @@
 """Policy rules P1-P15: at least one allowed and one failing case each, on rows from db/db.json."""
 from datetime import timedelta
 from decimal import Decimal
-from pathlib import Path
 
 import pytest
 
@@ -21,15 +20,7 @@ from ar.policy import (
     check_send_message,
     payment_candidates,
 )
-
-ROOT = Path(__file__).resolve().parent.parent
-DB_PATH = ROOT / 'db' / 'db.json'
-DOCUMENTS = ROOT / 'db' / 'documents'
-
-
-@pytest.fixture(scope='module')
-def db() -> ArDb:
-    return ArDb.load(DB_PATH)
+from evals.ar_tasks import DB_PATH, DOCUMENTS_DIR
 
 
 def send(db: ArDb, customer_id: str, contact_id: str, invoice_ids: list[str], body: str,
@@ -251,11 +242,11 @@ def test_p14_only_open_overdue_invoices_are_chased(db):
 
 def test_p13_only_an_approved_approval_is_carried_out_once(db):
     assert_denied(check_execute_approval(db, 'cus_garnet', approval_id='apr_8000'), 'P13')  # already executed
-    store = fresh_store(DB_PATH, DOCUMENTS)
+    store = fresh_store(DB_PATH, DOCUMENTS_DIR)
     call_tool(store, 'cus_fennick', 'propose_credit', {'dispute_id': 'dsp_3002', 'amount': '3120.00', 'reason': 'r'})
     assert_denied(check_execute_approval(store.db, 'cus_fennick', approval_id='apr_8001'), 'P13')  # pending
     decided = {'approval_id': 'apr_8001', 'decided_by': 'ar_lead', 'note': None}
-    approved = fresh_store(DB_PATH, DOCUMENTS)
+    approved = fresh_store(DB_PATH, DOCUMENTS_DIR)
     call_tool(approved, 'cus_fennick', 'propose_credit', {'dispute_id': 'dsp_3002', 'amount': '3120.00', 'reason': 'r'})
     call_env_function(approved, 'decide_approval', {**decided, 'decision': 'approved'})
     assert_allowed(check_execute_approval(approved.db, 'cus_fennick', approval_id='apr_8001'))

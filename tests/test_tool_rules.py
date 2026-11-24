@@ -1,24 +1,14 @@
 """Rules that only show over several writes, played through the real tools on db/db.json."""
 from datetime import date
 from decimal import Decimal
-from pathlib import Path
 from typing import Any
 
 import pytest
 
 from ar.data_model import InvoiceStatus
-from ar.environment import call_env_function, call_tool, check_assertion, fresh_store
+from ar.environment import call_env_function, call_tool, check_assertion
 from ar.errors import InvalidArgumentError, PolicyDenied
 from ar.store import Store
-
-ROOT = Path(__file__).resolve().parent.parent
-DB_PATH = ROOT / 'db' / 'db.json'
-DOCUMENTS = ROOT / 'db' / 'documents'
-
-
-@pytest.fixture
-def store() -> Store:
-    return fresh_store(DB_PATH, DOCUMENTS)
 
 
 def credit(store: Store, dispute_id: str, amount: str) -> Any:

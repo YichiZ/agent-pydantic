@@ -1,11 +1,9 @@
 """Ledger arithmetic over db/db.json, and the data rules in db/README.md checked through it."""
 from decimal import Decimal
-from pathlib import Path
 
 import pytest
 
 from ar.data_model import (
-    ArDb,
     Credit,
     CreditStatus,
     DisputeStatus,
@@ -17,13 +15,6 @@ from ar.data_model import (
     next_id,
 )
 from ar.ledger import amount_due, balance, is_overdue, open_invoices, payer_family, unapplied
-
-DB_PATH = Path(__file__).resolve().parent.parent / 'db' / 'db.json'
-
-
-@pytest.fixture(scope='module')
-def db() -> ArDb:
-    return ArDb.load(DB_PATH)
 
 
 # Rules the data obeys (db/README.md), checked through the ledger.
