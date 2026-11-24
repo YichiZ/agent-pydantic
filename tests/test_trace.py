@@ -106,7 +106,7 @@ def test_the_user_message_comes_first_then_each_call_and_its_result_then_the_rep
 def test_reasoning_comes_before_the_call_it_leads_to_and_empty_thinking_is_left_out():
     thought = 'Priya is the contact on file.\nCheck the amount due before writing.'
     due = ToolCallPart('amount_due', {'invoice_ids': ['INV-1001']})
-    script = Script(said(ThinkingPart(''), ThinkingPart(thought), due),
+    script = Script(said(ThinkingPart(''), ThinkingPart(f'{thought}\n\n'), due),  # the model ends its thinking with blank lines
                     said(ThinkingPart(''), ToolCallPart('get_account_state', {})))
     lines = traced(script, 'cus_brightwell')
     assert labels(lines) == ['USER', 'REASONING', 'TOOL CALL amount_due', 'TOOL RESULT amount_due',

@@ -164,7 +164,8 @@ def _block(kind: Kind, label: str, texts: Sequence[str] = ()) -> Lines:
 
 
 def _body(kind: Kind, text: str) -> Lines:
-    return tuple(Line(kind, row, BODY) for row in text.splitlines() or [''])
+    # Blank lines around the text are dropped (a model's thinking often ends with some); those inside are kept.
+    return tuple(Line(kind, row, BODY) for row in text.strip('\n').splitlines() or [''])
 
 
 def _text(value: Any) -> str:
