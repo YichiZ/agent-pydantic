@@ -1,0 +1,12 @@
+{
+  "id": "event_01",
+  "flow": "collections",
+  "type": "aging_check",
+  "customer_id": "cus_pinecrest",
+  "ticket": "Event: aging_check. Account: Pinecrest Dairy (cus_pinecrest).",
+  "user_scenario": null,
+  "initial_state": null,
+  "situation": "INV-1301 ($15,000.00) went past due yesterday. A payment of exactly that amount, pay_2001, landed today with a remittance naming the invoice, and has not been applied yet.",
+  "open_question": "Chase, or stay quiet because the money is plainly here? No rule mentions unapplied cash. Applying it belongs to the payment_received event, not this one.",
+  "rules_settle_it": false
+}

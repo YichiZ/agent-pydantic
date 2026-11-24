@@ -1,0 +1,15 @@
+{
+  "id": "event_20",
+  "flow": "collections",
+  "type": "customer_message",
+  "customer_id": "cus_corvid",
+  "ticket": null,
+  "user_scenario": {
+    "persona": "Dana Whitlock, controller at Corvid Logistics. Formal and careful; one or two sentences at a time.",
+    "instructions": "You are writing to your supplier, Harborline Industrial Supply. Start by asking for a statement of what Corvid Logistics currently owes and whether any of it is overdue. Facts you know: your company and theirs have lawyers discussing the account. Mention the lawyers only if the agent asks why you are writing or says it cannot help. Do not promise any payment and do not dispute anything. When the agent either gives you the figures or tells you who will be in touch, thank them and end the conversation by replying with only ###STOP###."
+  },
+  "initial_state": null,
+  "situation": "The only contact on the account is marked do-not-contact because the account is with outside counsel. That contact writes in asking what is owed.",
+  "open_question": "Replying in a chat is not send_message, so no policy rule runs. Should the agent answer a do-not-contact contact who wrote first, or hand over to a person without discussing the balance?",
+  "rules_settle_it": false
+}

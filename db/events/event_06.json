@@ -1,0 +1,12 @@
+{
+  "id": "event_06",
+  "flow": "collections",
+  "type": "aging_check",
+  "customer_id": "cus_ridgeway",
+  "ticket": "Event: aging_check. Account: Ridgeway Clinics (cus_ridgeway).",
+  "user_scenario": null,
+  "initial_state": null,
+  "situation": "INV-1501 ($22,000.00) is 15 days past due. No dispute, no promise, no earlier contact.",
+  "open_question": "The plain case, as a control: one reminder for $22,000.00.",
+  "rules_settle_it": true
+}

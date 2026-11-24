@@ -1,0 +1,27 @@
+{
+  "id": "event_14",
+  "flow": "collections",
+  "type": "aging_check",
+  "customer_id": "cus_garnet",
+  "ticket": "Event: aging_check. Account: Garnet Tooling (cus_garnet).",
+  "user_scenario": null,
+  "initial_state": {
+    "initialization_actions": [
+      {
+        "env_type": "assistant",
+        "func_name": "send_message",
+        "arguments": {
+          "contact_id": "con_809",
+          "channel": "email",
+          "invoice_ids": [
+            "INV-1601"
+          ],
+          "body": "Hi Wen, invoice INV-1601 now has $9,400.00 outstanding after the price credit. It was due on November 2, 2026. Could you let us know when we can expect payment?"
+        }
+      }
+    ]
+  },
+  "situation": "A reminder for INV-1601 ($9,400.00) was sent earlier today. The aging event has arrived a second time.",
+  "open_question": "Nothing to do: reminded zero days ago. The same event delivered twice must not produce two messages.",
+  "rules_settle_it": true
+}

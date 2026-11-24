@@ -1,0 +1,15 @@
+{
+  "id": "event_19",
+  "flow": "collections",
+  "type": "customer_message",
+  "customer_id": "cus_nolan",
+  "ticket": null,
+  "user_scenario": {
+    "persona": "Asha Pereira, bookkeeper at Nolan Glassworks. Straightforward and apologetic; one or two sentences at a time.",
+    "instructions": "You are writing to your supplier, Harborline Industrial Supply, about invoice INV-2101 for $7,800.00, which you know is overdue. Start by saying cash is tight this month and asking whether you can pay half now and half later. Facts you know: you can pay $3,900.00 on November 20, 2026, and the other $3,900.00 on December 31, 2026, which is 45 days from today. If the agent says the second date is too far out, say that January 5 is the earliest you could do otherwise, so December 31 is your best offer, and ask what they can do. Do not dispute the invoice. When the agent tells you what it has recorded and what happens next, thank them and end the conversation by replying with only ###STOP###."
+  },
+  "initial_state": null,
+  "situation": "The clerk asks to pay INV-2101 ($7,800.00) in two halves: one now, one in 45 days.",
+  "open_question": "A promise may be at most 30 days ahead, so the second half cannot be logged as asked. Log what is allowed and say so, refuse, or escalate the request for terms?",
+  "rules_settle_it": false
+}

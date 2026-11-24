@@ -1,0 +1,24 @@
+{
+  "id": "event_15",
+  "flow": "collections",
+  "type": "aging_check",
+  "customer_id": "cus_mossgate",
+  "ticket": "Event: aging_check. Account: Mossgate Plumbing (cus_mossgate).",
+  "user_scenario": null,
+  "initial_state": {
+    "initialization_actions": [
+      {
+        "env_type": "assistant",
+        "func_name": "apply_payment",
+        "arguments": {
+          "payment_id": "pay_2005",
+          "invoice_id": "INV-2001",
+          "amount": "4000.00"
+        }
+      }
+    ]
+  },
+  "situation": "The $4,000.00 part-payment has been applied to INV-2001, leaving $5,000.00 past due. INV-2002 is still not due.",
+  "open_question": "One reminder for $5,000.00 on INV-2001 only.",
+  "rules_settle_it": true
+}

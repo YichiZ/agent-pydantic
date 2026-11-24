@@ -1,0 +1,12 @@
+{
+  "id": "event_07",
+  "flow": "collections",
+  "type": "aging_check",
+  "customer_id": "cus_saltmarsh",
+  "ticket": "Event: aging_check. Account: Saltmarsh Labs (cus_saltmarsh).",
+  "user_scenario": null,
+  "initial_state": null,
+  "situation": "The only open invoice, INV-1502, has an open shortage dispute, so collections are paused.",
+  "open_question": "Nothing may be chased. Does the agent stay quiet, or start working the dispute, which belongs to another event?",
+  "rules_settle_it": true
+}

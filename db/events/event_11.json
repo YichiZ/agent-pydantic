@@ -1,0 +1,23 @@
+{
+  "id": "event_11",
+  "flow": "collections",
+  "type": "aging_check",
+  "customer_id": "cus_juniper",
+  "ticket": "Event: aging_check. Account: Juniper Packaging (cus_juniper).",
+  "user_scenario": null,
+  "initial_state": {
+    "initialization_actions": [
+      {
+        "env_type": "assistant",
+        "func_name": "reject_dispute",
+        "arguments": {
+          "dispute_id": "dsp_3004",
+          "reason": "No evidence was provided for the quality claim after repeated requests."
+        }
+      }
+    ]
+  },
+  "situation": "The quality dispute on INV-1702 was rejected just before this run, so both INV-1701 ($7,250.00) and INV-1702 ($4,800.00) may now be chased.",
+  "open_question": "One message covering both invoices, for $12,050.00. Every reminder in the eval tasks covers a single invoice.",
+  "rules_settle_it": true
+}
