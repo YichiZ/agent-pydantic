@@ -11,7 +11,7 @@ The eval set is built first and is the specification for the agent that follows.
 The agent, the eval runner and a saved baseline exist.
 
 - Built: [design](docs/ar-coworker-design.md), [implementation plan](docs/ar-coworker-implementation.md),
-  synthetic AR database, eval set of 20 tasks, data model and ledger, 15 policy rules, 17 tools,
+  synthetic AR database, eval set of 20 tasks, data model and ledger, 15 policy rules, 15 tools,
   the agent (one Pydantic AI orchestrator on Opus 5.5 with three capabilities loaded on demand), and the
   eval runner.
 - Baseline (`evals/ar_baseline.json`): all 20 tasks pass on each of 4 trials, 80 runs in all, at

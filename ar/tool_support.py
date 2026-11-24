@@ -11,7 +11,7 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, JsonValue, TypeAdapter, ValidationError
+from pydantic import BaseModel, ConfigDict, JsonValue
 
 from ar.data_model import (
     ActionLogEntry,
@@ -32,7 +32,6 @@ _CENT = Decimal('0.01')
 _MAX_MONEY = Decimal('1e12')
 _MONEY = re.compile(r'\d{1,12}(\.\d{1,2})?')
 _DATE = re.compile(r'\d{4}-\d{2}-\d{2}')
-_PAYLOAD = TypeAdapter(dict[str, JsonValue])
 
 
 # Arguments.
@@ -76,13 +75,6 @@ def parse_choice[E: StrEnum](enum: type[E], value: object, name: str) -> E:
         return enum(value)
     except (ValueError, TypeError) as error:
         raise InvalidArgumentError(f'{name} must be one of {", ".join(enum)}; got {value!r}.') from error
-
-
-def parse_payload(value: object, name: str) -> dict[str, JsonValue]:
-    try:
-        return _PAYLOAD.validate_python(value)
-    except ValidationError as error:
-        raise InvalidArgumentError(f'{name} must be a JSON object; got {value!r}.') from error
 
 
 def require_amount(amount: Decimal, limit: Decimal, name: str, what: str) -> None:

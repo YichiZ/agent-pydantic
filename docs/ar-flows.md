@@ -25,9 +25,8 @@ with its capability, which the agent loads before it decides what the event need
 
 ![How the flows connect](ar-flow-overview.svg)
 
-Every write the flows make goes through policy code first, except the two hand-overs to a person,
-which check no rule: `escalate_to_human` only logs the hand-over (task 3), and `request_approval`,
-for a case no rule covers, only records a pending approval.
+Every write the flows make goes through policy code first, except the hand-over to a person, which
+checks no rule: `escalate_to_human` only logs the hand-over (task 3, or a case no rule covers).
 
 ## Collect (`aging_check`)
 

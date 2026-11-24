@@ -220,7 +220,7 @@ damaged goods, quality, delivery, duplicate charge. Size: 13 customers and 20 in
 - Read: `get_account_state`, `list_open_invoices`, `get_invoice`, `get_payment`, `get_remittance`,
   `amount_due`, `search_knowledge`.
 - Write: `apply_payment`, `send_message`, `open_dispute`, `propose_credit`, `reject_dispute`, `log_promise`,
-  `pause_collections`, `request_approval`, `execute_approval`, `escalate_to_human`.
+  `execute_approval`, `escalate_to_human`.
 - Assert methods, called by `env_assertions`: `assert_no_outbound_message`,
   `assert_last_message_amount`, `assert_no_credit_without_approval`, `assert_unapplied_cash`,
   `assert_application_count`, `assert_invoice_paused`, `assert_balance`, `assert_human_requested`,
@@ -350,10 +350,10 @@ nothing. A flow's rules (`db/policy/<flow>.md`) arrive when its capability is lo
 
 | Where | Reads | Write tools |
 |---|---|---|
-| Always present | everything, through the 7 read tools | `request_approval`, `execute_approval`, `escalate_to_human` |
+| Always present | everything, through the 7 read tools | `execute_approval`, `escalate_to_human` |
 | Collections | open invoices, promises, message history, contact preferences | `send_message`, `log_promise` |
 | Cash application | payments, remittances, open invoices | `apply_payment` |
-| Disputes and deductions | dispute, evidence documents, pricing and delivery records | `open_dispute`, `pause_collections`, `propose_credit`, `reject_dispute` |
+| Disputes and deductions | dispute, evidence documents, pricing and delivery records | `open_dispute`, `propose_credit`, `reject_dispute` |
 
 Each write tool lives in one place. A short-pay needs cash application and disputes together.
 

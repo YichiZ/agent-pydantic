@@ -1,60 +1,32 @@
 """The eval set made executable with no model: replay each task through the real tools and policy."""
-import json
-from pathlib import Path
 from typing import Any
 
 import pytest
 
-from ar.environment import call_env_function, call_tool, check_assertion, fresh_store
+from ar.environment import call_tool
 from ar.errors import PolicyDenied
-from ar.store import Store
+from evals.ar_runner import failed_assertions, initialize, replay
+from evals.ar_tasks import load_splits, load_tasks
 
-ROOT = Path(__file__).resolve().parent.parent
-DB_DIR = ROOT / 'db'
-TASKS = {task['id']: task for task in json.loads((DB_DIR / 'tasks.json').read_text())}
-NEVER_EVENTS = json.loads((DB_DIR / 'split_tasks.json').read_text())['never_events']
+TASKS = {task.id: task for task in load_tasks()}
+NEVER_EVENTS = load_splits()['never_events']
 PASS_WITH_NO_ACTIONS = {'task_13', 'task_16', 'task_17'}
 
 type Step = tuple[str, dict[str, Any]]
 
 
-def start(task: dict[str, Any]) -> Store:
-    """A fresh store with the task's initial state replayed."""
-    store = fresh_store(DB_DIR / 'db.json', DB_DIR / 'documents')
-    for step in (task['initial_state'] or {}).get('initialization_actions') or []:
-        if step['env_type'] == 'assistant':
-            call_tool(store, task['annotations']['customer_id'], step['func_name'], step['arguments'])
-        else:
-            call_env_function(store, step['func_name'], step['arguments'])
-    return store
-
-
-def reference(task: dict[str, Any]) -> list[Step]:
-    return [(action['name'], action['arguments']) for action in task['evaluation_criteria']['actions']]
-
-
-def play(store: Store, task: dict[str, Any], steps: list[Step]) -> None:
-    for name, arguments in steps:
-        call_tool(store, task['annotations']['customer_id'], name, arguments)
-
-
-def failed_assertions(store: Store, task: dict[str, Any]) -> list[dict[str, Any]]:
-    return [check for check in task['evaluation_criteria']['env_assertions']
-            if check_assertion(store.db, check['func_name'], check['arguments']) != check['assert_value']]
-
-
 @pytest.mark.parametrize('task_id', TASKS)
 def test_reference_actions_replay_and_every_assertion_holds(task_id):
     task = TASKS[task_id]
-    store = start(task)
-    play(store, task, reference(task))
-    assert failed_assertions(store, task) == []
+    store = initialize(task)
+    replay(store, task)
+    assert failed_assertions(store.db, task) == ()
 
 
 @pytest.mark.parametrize('task_id', TASKS)
 def test_with_no_agent_actions_only_the_do_nothing_tasks_pass(task_id):
     task = TASKS[task_id]
-    passed = failed_assertions(start(task), task) == []
+    passed = failed_assertions(initialize(task).db, task) == ()
     assert passed == (task_id in PASS_WITH_NO_ACTIONS)
 
 
@@ -106,29 +78,30 @@ def test_every_never_event_task_has_a_wrong_path():
 @pytest.mark.parametrize(('task_id', 'index'), WRONG_CASES)
 def test_a_wrong_path_on_a_never_event_task_is_denied_or_caught(task_id, index):
     task = TASKS[task_id]
-    store = start(task)
+    store = initialize(task)
     try:
-        play(store, task, WRONG[task_id][index])
+        for name, arguments in WRONG[task_id][index]:
+            call_tool(store, task.annotations.customer_id, name, arguments)
     except PolicyDenied:
         return
-    assert failed_assertions(store, task), 'the wrong path passed every assertion'
+    assert failed_assertions(store.db, task), 'the wrong path passed every assertion'
 
 
 # The tools absorb these two never-events, so they can neither be denied nor fail an assertion.
 
 def test_guessing_a_candidate_invoice_is_held_like_the_reference():
     task = TASKS['task_07']
-    store = start(task)
+    store = initialize(task)
     result = call_tool(store, 'cus_quarry', *apply('pay_2004', 'INV-1403', '6300.00'))
     assert result.status == 'held_for_approval'
     assert store.db.approval(result.approval_id).payload['candidate_invoice_ids'] == ['INV-1402', 'INV-1403']
-    assert failed_assertions(store, task) == []
+    assert failed_assertions(store.db, task) == ()
 
 
 def test_applying_the_same_payment_again_changes_nothing():
     task = TASKS['task_16']
-    store = start(task)
+    store = initialize(task)
     before = store.db
     result = call_tool(store, 'cus_pinecrest', *apply('pay_2001', 'INV-1301', '15000.00'))
     assert result.status == 'unchanged' and store.db is before
-    assert failed_assertions(store, task) == []
+    assert failed_assertions(store.db, task) == ()

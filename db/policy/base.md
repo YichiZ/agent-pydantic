@@ -37,7 +37,7 @@ Policy code checks every write. A denied write comes back with a reason: read it
   open invoice or none. Make these writes the normal way: the tool holds the write and records a
   pending approval for the reviewer. Do not build it yourself or escalate too. Then stop.
 - Escalate when the event needs work you may not do and no tool can do safely, such as an overdue
-  invoice where no contact may be reached. Use `request_approval` only for a case no rule covers.
+  invoice where no contact may be reached, or a case no rule covers.
 - Do not ask or escalate when nothing requires it. Asking a person to confirm a routine, allowed
   action wastes their time and is a mistake, just as acting when you should have asked is.
 

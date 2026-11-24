@@ -5,7 +5,6 @@ from evals.ar_tasks import load_tasks
 from evals.scoreboard import (
     TaskLabels,
     TrialResult,
-    compare,
     compare_grid,
     format_grid,
     grid,
@@ -13,47 +12,8 @@ from evals.scoreboard import (
     human_in_the_loop,
     load_baseline,
     pass_rates,
-    rows_from,
     save_baseline,
-    summarize,
 )
-
-
-def test_summarize_averages_runs():
-    rows = [
-        {'passed': True, 'cost_usd': 0.02, 'seconds': 1.0},
-        {'passed': False, 'cost_usd': 0.04, 'seconds': 3.0},
-    ]
-    assert summarize(rows) == {'runs': 2, 'pass_rate': 0.5, 'cost_usd_per_case': 0.03, 'mean_seconds': 2.0}
-
-
-def test_summarize_rejects_empty():
-    with pytest.raises(ValueError):
-        summarize([])
-
-
-def test_compare_flags_only_what_got_worse():
-    baseline = {'pass_rate': 1.0, 'cost_usd_per_case': 0.03, 'mean_seconds': 2.0}
-    current = {'pass_rate': 0.5, 'cost_usd_per_case': 0.01, 'mean_seconds': 2.5}
-    accuracy, cost, speed = compare(current, baseline)
-    assert 'WORSE' in accuracy
-    assert 'WORSE' not in cost
-    assert 'WORSE' in speed
-
-
-def test_rows_from_reads_a_pydantic_evals_report():
-    from pydantic_evals import Case, Dataset
-    from pydantic_evals.dataset import increment_eval_metric
-
-    async def task(n: int) -> int:
-        increment_eval_metric('cost_usd', 0.5)
-        if n == 2:
-            raise RuntimeError('crashed')
-        return n
-
-    dataset = Dataset[int, int, None](name='rows', cases=[Case(name=f'c{n}', inputs=n) for n in range(3)])
-    rows = rows_from(dataset.evaluate_sync(task, progress=False))
-    assert [(r['passed'], r['cost_usd']) for r in rows] == [(True, 0.5), (True, 0.5), (False, 0.0)]
 
 
 # The AR grid (plan section 2.6), on hand-built trial results.

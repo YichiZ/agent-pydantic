@@ -78,10 +78,11 @@ def test_a_missing_row_does_not_compare_equal():
 
 def test_an_added_row_is_reported():
     task = TASKS['task_13']
-    escalated = initialize(task)
-    call_tool(escalated, 'cus_kestrel', 'request_approval', {'action': 'call_customer', 'payload': {}, 'reason': 'x'})
-    changes = diff(project(target(task)), project(escalated.db))
-    assert changes == (TableDiff(table='approvals', added=('apr_8001',)),)
+    promised = initialize(task)
+    call_tool(promised, 'cus_kestrel', 'log_promise',
+              {'invoice_id': 'INV-1801', 'promised_date': '2026-11-30', 'amount': '100.00'})
+    changes = diff(project(target(task)), project(promised.db))
+    assert changes == (TableDiff(table='promises', added=('prm_8502',)),)
 
 
 def test_a_wrong_status_does_not_compare_equal():

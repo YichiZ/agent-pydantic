@@ -80,7 +80,7 @@ def reference_calls(task_id: str) -> list[Call]:
 
 # Which tools the model is offered.
 
-def test_base_tools_are_offered_first_and_all_17_once_every_capability_is_loaded(store: Store) -> None:
+def test_base_tools_are_offered_first_and_all_15_once_every_capability_is_loaded(store: Store) -> None:
     script = Script(load(*CAPABILITY_IDS))
     run(script, store, 'cus_pinecrest')
     # In 2.71.0 a deferred capability's tools are in the request parameters from the start, marked
@@ -239,11 +239,8 @@ SAMPLE_CALLS: list[tuple[str, str, dict[str, Any]]] = [
     ('cus_hollis', 'log_promise', reference_calls('task_02')[0][1]),
     ('cus_hollis', 'log_promise', {'invoice_id': 'INV-1101', 'promised_date': '2026-11-01', 'amount': '8150.00'}),
     ('cus_ridgeway', 'open_dispute', reference_calls('task_08')[0][1]),
-    ('cus_ridgeway', 'pause_collections', {'invoice_id': 'INV-1501', 'reason': 'Customer contests the price.'}),
     ('cus_saltmarsh', 'propose_credit', reference_calls('task_09')[0][1]),
     ('cus_larkspur', 'reject_dispute', reference_calls('task_14')[0][1]),
-    ('cus_corvid', 'request_approval', {'action': 'write_off', 'payload': {'invoice_id': 'INV-1201'},
-                                        'reason': 'With outside counsel.'}),
     ('cus_fennick', 'execute_approval', {'approval_id': 'apr_8001'}),
     ('cus_corvid', 'escalate_to_human', reference_calls('task_03')[0][1]),
 ]

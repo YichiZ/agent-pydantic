@@ -95,17 +95,15 @@ def test_a_write_held_for_a_person_names_the_rule_and_the_approval():
     assert '     -> HELD P10: approval apr_8001' in lines
 
 
-def test_a_refusal_that_is_not_a_policy_rule_is_a_retry_and_a_request_for_a_person_is_held():
-    approval = {'action': 'write_off', 'payload': {'invoice_id': 'INV-1201', 'note': 'x' * 200},
-                'reason': 'With outside counsel.'}
-    script = Script(('get_invoice', {'invoice_id': 'INV-9999'}), ('request_approval', approval),
+def test_a_refusal_that_is_not_a_policy_rule_is_a_retry_and_a_long_value_that_is_not_text_is_cut():
+    many = [f'INV-{n}' for n in range(1201, 1231)]
+    script = Script(('get_invoice', {'invoice_id': 'INV-9999'}), ('amount_due', {'invoice_ids': many}),
                     ('list_open_invoices', {}))
     lines = traced(script, 'cus_corvid')
     assert lines[2].startswith('     -> RETRY: ') and 'INV-9999' in lines[2]
     call = numbered(lines)[1]
-    assert call.startswith('2  request_approval(action="write_off", payload={"invoice_id": "INV-1201", "note": ')
-    assert '...' in call and 'x' * 200 not in call  # a long value that is not text is cut
-    assert re.fullmatch(r'     -> HELD: approval apr_\d+', lines[lines.index(call) + 1])
+    assert call.startswith('2  amount_due(invoice_ids=["INV-1201", "INV-1202", ')
+    assert call.endswith('...)') and 'INV-1230' not in call
     assert lines[lines.index(numbered(lines)[2]) + 1].startswith('     -> INV-1201')  # a list of rows: their ids
 
 

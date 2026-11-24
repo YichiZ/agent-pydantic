@@ -95,19 +95,6 @@ def test_a_promise_is_logged_at_most_thirty_days_ahead(store, promised_date, amo
     assert store.db is before
 
 
-def test_pause_collections_is_refused_without_an_open_dispute(store):
-    reason = assert_denied(store, 'P1', 'pause_collections', 'cus_brightwell',
-                           {'invoice_id': 'INV-1001', 'reason': 'Customer asked for time.'})
-    assert 'dispute' in reason
-
-
-def test_pause_collections_repairs_a_disputed_invoice_left_unpaused(store):
-    unpaused = store.db.invoice('INV-1502').model_copy(update={'collections_paused': False})  # dsp_3001 is open
-    store.swap(store.db.with_rows('invoices', {'INV-1502': unpaused}))
-    result = call_tool(store, 'cus_saltmarsh', 'pause_collections', {'invoice_id': 'INV-1502', 'reason': 'Disputed.'})
-    assert result.status == 'done' and store.db.invoice('INV-1502').collections_paused is True
-
-
 # P15: cash no invoice matches is held for a person, with no candidate to pick.
 
 def test_a_payment_matching_no_invoice_is_held_with_no_candidates(store):
