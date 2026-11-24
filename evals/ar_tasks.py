@@ -79,7 +79,7 @@ class Description(_Frozen):
 
 class Annotations(_Frozen):
     customer_id: str
-    skill: Literal['collections', 'cash_application', 'disputes', 'cross_skill']
+    flow: Literal['collections', 'cash_application', 'disputes', 'cross_flow']
     trigger: Literal['ticket', 'chat']
     disposition: Literal['act', 'ask', 'escalate', 'do_nothing', 'refuse']
     needs_human: bool

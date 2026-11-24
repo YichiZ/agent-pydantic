@@ -1,5 +1,5 @@
 """The agent's 17 tools: thin wrappers over the plain tools in `ar.environment.TOOLS`, grouped as in the plan's
-Piece F table. The base tools are always offered; each skill is a capability the model loads on demand.
+Piece F table. The base tools are always offered; the rest come in capabilities the model loads on demand.
 
 A wrapper passes the run's store and customer id. A refused call (a policy denial, a bad argument, an unknown id)
 comes back to the model as a retry carrying the reason; a write held for a person is a normal result.
@@ -16,7 +16,7 @@ from pydantic_ai.tools import ToolDefinition
 
 from ar import tools_disputes, tools_read, tools_write
 from ar.data_model import Channel, DisputeCategory
-from ar.environment import TOOLS, Skill
+from ar.environment import TOOLS, CapabilityName
 from ar.errors import TOOL_ERRORS
 from ar.run_types import PolicyKind, Retrieval
 from ar.store import Store
@@ -235,7 +235,7 @@ WRAPPERS: Sequence[Callable[..., Any]] = (
     pause_collections, propose_credit, reject_dispute,
 )
 
-SKILL_CAPABILITIES: dict[Skill, tuple[str, str]] = {  # skill in TOOLS -> (capability id, catalog line)
+CAPABILITY_CATALOG: dict[CapabilityName, tuple[str, str]] = {  # capability in TOOLS -> (capability id, catalog line)
     'collections': ('collections', 'Payment reminders and promises to pay: send_message, log_promise. '
                                    'Load for an aging check or a customer who promises to pay.'),
     'cash_application': ('cash-application', 'Applying received payments to invoices: apply_payment. '
@@ -250,13 +250,13 @@ def _offer_search(ctx: RunContext[AgentDeps], tool_def: ToolDefinition) -> ToolD
     return None if ctx.deps.retrieval == 'none' else tool_def
 
 
-def _tools(skill: Skill) -> list[Tool[AgentDeps]]:
+def _tools(capability: CapabilityName) -> list[Tool[AgentDeps]]:
     # TOOLS[...] raises at import if a wrapper's name is not one of the 17 tools.
     return [Tool(wrapper, prepare=_offer_search if wrapper is search_knowledge else None)
-            for wrapper in WRAPPERS if TOOLS[wrapper.__name__].skill == skill]
+            for wrapper in WRAPPERS if TOOLS[wrapper.__name__].capability == capability]
 
 
 BASE_TOOLS = _tools('base')
 CAPABILITIES = [Capability[AgentDeps](id=capability_id, description=description, defer_loading=True,
-                                      tools=_tools(skill))
-                for skill, (capability_id, description) in SKILL_CAPABILITIES.items()]
+                                      tools=_tools(name))
+                for name, (capability_id, description) in CAPABILITY_CATALOG.items()]

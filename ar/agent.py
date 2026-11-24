@@ -1,7 +1,7 @@
 """The AR coworker: one Pydantic AI agent over the 17 tools, and `run_turn`, which implements `ar.run_types.AgentFn`.
 
 The rulebook (`db/policy_solo.md` or `db/policy.md`) is the agent's instructions; it is read from the directory
-that holds the store's documents. Tools and skills are in `ar.agent_tools`.
+that holds the store's documents. Tools and capabilities are in `ar.agent_tools`.
 """
 
 import json

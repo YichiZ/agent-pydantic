@@ -17,8 +17,8 @@ db: applications -pay_2005:INV-2001; payments ~pay_2005 (status)
 
 3 tasks, 6 trials; columns are pass^1 and pass^2
 overall                            0.3333  0.3333  (3 tasks)
-skill  cash_application            0.0000  0.0000  (1 tasks)
-skill  collections                 0.5000  0.5000  (2 tasks)
+flow  cash_application             0.0000  0.0000  (1 tasks)
+flow  collections                  0.5000  0.5000  (2 tasks)
 disposition  act                   0.0000  0.0000  (2 tasks)
 disposition  do_nothing            1.0000  1.0000  (1 tasks)
 never-events                       0.0000  0.0000  (1 tasks)  (pass^k must be 1.0)
@@ -113,7 +113,7 @@ def test_missed_human_in_the_loop_exits_one(capsys):
 
 
 def test_a_split_runs_its_tasks(capsys):
-    ar_evals.main(['--split', 'cross_skill'])
+    ar_evals.main(['--split', 'cross_flow'])
     out = capsys.readouterr().out
     assert [line.split()[0] for line in out.splitlines() if line.startswith('task_')] == [
         'task_06', 'task_11', 'task_12']

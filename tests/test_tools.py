@@ -473,10 +473,10 @@ def test_fresh_store_needs_the_documents_directory(tmp_path):
 def test_registry_places_each_tool_once():
     assert len(TOOLS) == 17
     assert sum(spec.kind == 'read' for spec in TOOLS.values()) == 7
-    by_skill = {skill: {name for name, spec in TOOLS.items() if spec.skill == skill}
-                for skill in ('base', 'collections', 'cash_application', 'disputes')}
-    assert by_skill['collections'] == {'send_message', 'log_promise'}
-    assert by_skill['cash_application'] == {'apply_payment'}
-    assert by_skill['disputes'] == {'open_dispute', 'pause_collections', 'propose_credit', 'reject_dispute'}
-    assert {'request_approval', 'execute_approval', 'escalate_to_human'} <= by_skill['base']
+    by_capability = {capability: {name for name, spec in TOOLS.items() if spec.capability == capability}
+                     for capability in ('base', 'collections', 'cash_application', 'disputes')}
+    assert by_capability['collections'] == {'send_message', 'log_promise'}
+    assert by_capability['cash_application'] == {'apply_payment'}
+    assert by_capability['disputes'] == {'open_dispute', 'pause_collections', 'propose_credit', 'reject_dispute'}
+    assert {'request_approval', 'execute_approval', 'escalate_to_human'} <= by_capability['base']
     assert all(spec.name == name for name, spec in TOOLS.items())

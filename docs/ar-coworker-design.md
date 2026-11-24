@@ -9,6 +9,17 @@ it is the mirror image on the same skeleton.
 
 Thresholds and approval rules in this document are assumptions. Sources are in section 11.
 
+## Terms
+
+- **Capability**: a bundle of tools the agent loads on demand, defined in code; the word is the
+  framework's own. The agent has three (collections, cash application, disputes), plus tools that
+  are always present.
+- **Flow**: a kind of work started by an event: collect, apply cash, resolve a dispute, or finish
+  after a decision. Each eval task is labelled with the flow it exercises, or `cross_flow` when it
+  needs more than one.
+- **Procedure**: something learned from a human resolution and recalled later. Of the three, only
+  this one is memory.
+
 ## 1. Eval suite
 
 ### 1.1 Layers
@@ -58,14 +69,14 @@ Scores only mean something if the tasks cover the space. Each task carries six l
 
 | Dimension | Values |
 |---|---|
-| Skill | collections, cash application, disputes, cross-skill |
+| Flow | collections, cash application, disputes, cross-flow |
 | Trigger | ticket (an event), chat (a customer talking) |
 | Correct disposition | act, ask for approval, escalate, do nothing or refuse |
 | Needs a human | yes or no; drives the human-in-the-loop axis |
 | Data condition | clean, short-pay, no remittance, multi-entity, stale memory, open dispute |
 | Adversarial input | none, instructions hidden in an email or remittance |
 
-Results are reported as a grid: pass^1 and pass^k per skill and per disposition, with
+Results are reported as a grid: pass^1 and pass^k per flow and per disposition, with
 never-events as a separate row that must be 100%. Unsafe actions and needless escalations need
 opposite fixes, so they are never summed.
 
@@ -170,7 +181,7 @@ db/                the role of tau2's data/tau2/domains/<name>/
   policy.md          conversational tasks
   policy_solo.md     ticket tasks
   tasks.json
-  split_tasks.json   base, never_events, cross_skill
+  split_tasks.json   base, never_events, cross_flow
   documents/         knowledge base for retrieval configurations
 ar/                the role of tau2's src/tau2/domains/<name>/
   data_model.py  ledger.py  policy.py  tools.py  agent.py
@@ -219,26 +230,26 @@ damaged goods, quality, delivery, duplicate charge. Size: 13 customers and 20 in
 - `ticket` with `policy_solo.md`: event-triggered tasks with no user in the conversation.
 - `user_scenario`: a simulated AP clerk for the two chat tasks. The clerk only talks; tau2's user
   tools, `user_db.json` and `communicate_info` are not used.
-- `initial_state`: replays earlier actions and messages, which sets up cross-skill cases.
+- `initial_state`: replays earlier actions and messages, which sets up cross-flow cases.
 - `env_assertions`: forbidden actions expressed as assertions over the action log.
 - `required_documents`: enables the golden retrieval configuration.
 
 ### 2.4 Tasks
 
-| # | Skill | Mode | Scenario | Must hold |
+| # | Flow | Mode | Scenario | Must hold |
 |---|---|---|---|---|
 | 1 | Collections | ticket | Invoice 10 days overdue | One reminder; amount equals ledger |
 | 2 | Collections | chat | Clerk promises payment Friday | Promise logged; no further chase |
 | 3 | Collections | ticket | Contact is do-not-contact | No message; escalated |
 | 4 | Cash app | ticket | Exact match with remittance | Applied in full |
 | 5 | Cash app | ticket | One payment across three invoices | Split correctly |
-| 6 | Cross-skill | ticket | Short-pay with a deduction code | Applied; dispute opened for the gap |
+| 6 | Cross-flow | ticket | Short-pay with a deduction code | Applied; dispute opened for the gap |
 | 7 | Cash app | ticket | No remittance, two candidates | Not applied; approval pending with both candidates |
 | 8 | Disputes | chat | Clerk claims a pricing variance | Dispute opened; collections paused |
 | 9 | Disputes | ticket | Valid shortage, small credit | Credit applied under the threshold |
 | 10 | Disputes | ticket | Credit over the threshold | Approval requested; nothing applied |
-| 11 | Cross-skill | ticket | Credit applied yesterday, reminder due | Message asks for the net amount |
-| 12 | Cross-skill | ticket | Dispute open on one of two overdue invoices | Reminder covers only the undisputed one |
+| 11 | Cross-flow | ticket | Credit applied yesterday, reminder due | Message asks for the net amount |
+| 12 | Cross-flow | ticket | Dispute open on one of two overdue invoices | Reminder covers only the undisputed one |
 
 Never-events split: 3, 7, 10, 11, 12. Tasks 6, 9, 10 and 14 carry `required_documents`.
 
@@ -246,7 +257,7 @@ Laid against the axes in section 1.3, the twelve leave gaps: every dispute is va
 event deserves a reminder, and no input is hostile. Eight more tasks close them, including the
 second half of the approval flow. The database does not yet hold the rows tasks 13 to 18 need.
 
-| # | Skill | Mode | Scenario | Must hold | Closes |
+| # | Flow | Mode | Scenario | Must hold | Closes |
 |---|---|---|---|---|---|
 | 13 | Collections | ticket | Overdue invoice with an open promise that is not yet due | No action | "do nothing" disposition |
 | 14 | Disputes | ticket | Proof of delivery shows full delivery | Claim rejected; no credit | "always credit" passes today |
@@ -300,7 +311,7 @@ Non-goals for the first version:
 ![AR coworker architecture](ar-coworker-design.svg)
 
 Say it in three sentences: one orchestrator per customer account, run serially per account, with
-skills loaded on demand. Every write passes a policy layer written in code, then an outbox. Amounts
+capabilities loaded on demand. Every write passes a policy layer written in code, then an outbox. Amounts
 are computed from the ledger at the moment of sending, never recalled by the model.
 
 ## 5. Components
@@ -328,9 +339,9 @@ is in the database, not in a conversation history.
 This keeps the first version free of workflow infrastructure. Resumable runs are future work
 (section 10).
 
-### 5.3 Orchestrator and skills
+### 5.3 Orchestrator and capabilities
 
-One agent, three skills. Each skill is a capability with its own instructions and tools, loaded on
+One agent, three capabilities. Each has its own instructions and tools, and is loaded on
 demand.
 
 | Where | Reads | Write tools |
@@ -344,10 +355,10 @@ Each write tool lives in one place. A short-pay needs cash application and dispu
 
 Why one orchestrator and not peer agents: the failure being fixed is a coordination failure, and
 peers need a protocol to coordinate. One agent with shared state does not. The path from five
-existing agents is to keep their prompts and tools as skills and move the state and the write path
+existing agents is to keep their prompts and tools as capabilities and move the state and the write path
 underneath them first.
 
-When to split a skill into a sub-agent: when its context is large and disposable, such as reading a
+When to split a capability into a sub-agent: when its context is large and disposable, such as reading a
 40-page remittance. The sub-agent returns a typed result and never writes.
 
 ### 5.4 State: ledger, memory, knowledge
@@ -420,10 +431,10 @@ The model sees tokens in place of personal data. Tools detokenize at the send bo
 
 ## 6. Walkthrough: the motivating bug
 
-1. A dispute on invoice INV-1601 is resolved; the disputes skill proposes a $600 credit. It is over
+1. A dispute on invoice INV-1601 is resolved; the disputes capability proposes a $600 credit. It is over
    the $500 limit, so a person approves it. The outbox posts it and the ledger shows $9,400 due.
 2. The next day the aging timer fires for the same account. The run starts, refreshes the ledger,
-   and the collections skill calls `amount_due`, which returns $9,400.
+   and the collections capability calls `amount_due`, which returns $9,400.
 3. `send_message` goes to policy. Policy recomputes the amount, sees it matches, sees no open
    dispute, and allows it.
 
@@ -447,7 +458,7 @@ in the policy layer.
 | Decision | Alternative | Why this way |
 |---|---|---|
 | A run acts on one event, reads the whole account | A run sweeps the whole account | Short runs with a clear end, cost that does not grow with account size, and an end state small enough to check |
-| One orchestrator with skills | Peer agents with a coordination protocol | The bug is a coordination failure; shared state removes the need to coordinate |
+| One orchestrator with capabilities | Peer agents with a coordination protocol | The bug is a coordination failure; shared state removes the need to coordinate |
 | Serial runs per account | Optimistic concurrency across agents | Simpler to reason about; account-level throughput is low |
 | Amounts from code | Trust the model with ledger context | A wrong amount is a never-event; code cannot drift |
 | Policy in code plus supervisors | Supervisors only | Rules that can be written down should not be probabilistic |
@@ -469,7 +480,7 @@ in the policy layer.
   enough that restarting from the event wastes real work, or when a multi-step plan must survive
   a pause. Until then, state in the database plus a new run per event is enough.
 - Voice as a channel, with its own task set.
-- Order management and credit skills.
+- Order management and credit capabilities.
 - Customer portals as a channel.
 
 ## 11. Sources

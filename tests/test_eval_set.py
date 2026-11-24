@@ -45,7 +45,7 @@ ASSERTIONS = {
 }
 MONEY_ASSERTIONS = {'assert_last_message_amount', 'assert_unapplied_cash', 'assert_balance'}
 ANNOTATIONS = {
-    'skill': {'collections', 'cash_application', 'disputes', 'cross_skill'},
+    'flow': {'collections', 'cash_application', 'disputes', 'cross_flow'},
     'trigger': {'ticket', 'chat'},
     'disposition': {'act', 'ask', 'escalate', 'do_nothing', 'refuse'},
     'needs_human': {True, False},
@@ -102,9 +102,9 @@ def test_splits(tasks):
     assert splits == {
         'base': [task_id(n) for n in range(1, 21)],
         'never_events': [task_id(n) for n in (3, 7, 10, 11, 12, 14, 15, 16, 20)],
-        'cross_skill': [task_id(n) for n in (6, 11, 12)],
+        'cross_flow': [task_id(n) for n in (6, 11, 12)],
     }
-    assert [task_id(n) for n in (6, 11, 12)] == [t['id'] for t in tasks if t['annotations']['skill'] == 'cross_skill']
+    assert [task_id(n) for n in (6, 11, 12)] == [t['id'] for t in tasks if t['annotations']['flow'] == 'cross_flow']
 
 
 def test_needs_human_exactly_for_3_7_10_18(tasks):

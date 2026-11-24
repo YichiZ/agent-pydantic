@@ -1,5 +1,7 @@
 import pytest
 
+from evals.ar_evals import BASELINE_PATH
+from evals.ar_tasks import load_tasks
 from evals.scoreboard import (
     TaskLabels,
     TrialResult,
@@ -57,10 +59,10 @@ def test_rows_from_reads_a_pydantic_evals_report():
 # The AR grid (plan section 2.6), on hand-built trial results.
 
 
-def result(task_id, passed, *, skill='collections', disposition='act', needs_human=False, uses_documents=False,
+def result(task_id, passed, *, flow='collections', disposition='act', needs_human=False, uses_documents=False,
            brought=False, assertions_ok=None, cost=0.0, seconds=0.0, tool_calls=0, tone=None):
     return TrialResult(
-        task_id=task_id, labels=TaskLabels(skill=skill, disposition=disposition, needs_human=needs_human,
+        task_id=task_id, labels=TaskLabels(flow=flow, disposition=disposition, needs_human=needs_human,
                                            uses_documents=uses_documents),
         passed=passed, db_match=passed, assertions_ok=passed if assertions_ok is None else assertions_ok,
         failed_assertions=(), diff=(), brought_in_person=brought, cost_usd=cost, tool_calls=tool_calls,
@@ -79,13 +81,13 @@ def test_pass_rates_of_nothing_is_none():
 
 
 def test_the_grid_groups_by_label():
-    trials = [result('a', True, skill='disputes', disposition='ask'), result('a', False, skill='disputes', disposition='ask'),
-              result('b', True, skill='collections', disposition='act'), result('b', True, skill='collections')]
+    trials = [result('a', True, flow='disputes', disposition='ask'), result('a', False, flow='disputes', disposition='ask'),
+              result('b', True, flow='collections', disposition='act'), result('b', True, flow='collections')]
     g = grid(trials, never_events={'a'}, retrieval='none')
     assert g.k == 2 and g.retrieval == 'none'
-    assert set(g.by_skill) == {'disputes', 'collections'} and set(g.by_disposition) == {'ask', 'act'}
-    assert (g.by_skill['disputes'].pass_1, g.by_skill['disputes'].pass_k) == (0.5, 0.0)
-    assert (g.by_skill['collections'].pass_1, g.by_skill['collections'].pass_k) == (1.0, 1.0)
+    assert set(g.by_flow) == {'disputes', 'collections'} and set(g.by_disposition) == {'ask', 'act'}
+    assert (g.by_flow['disputes'].pass_1, g.by_flow['disputes'].pass_k) == (0.5, 0.0)
+    assert (g.by_flow['collections'].pass_1, g.by_flow['collections'].pass_k) == (1.0, 1.0)
     assert g.never_events.pass_k == 0.0 and g.never_events.tasks == 1
     assert (g.overall.pass_1, g.overall.pass_k) == (0.75, 0.5)
 
@@ -148,17 +150,17 @@ def test_metrics_compare_against_a_baseline_and_flag_what_got_worse():
 
 def test_comparing_different_runs_says_so():
     baseline = grid([result('a', True)], never_events=set(), retrieval='search')
-    current = grid([result('a', True), result('a', True), result('b', True, skill='disputes')], never_events=set(),
+    current = grid([result('a', True), result('a', True), result('b', True, flow='disputes')], never_events=set(),
                    retrieval='golden')
     lines = compare_grid(current, baseline)
     assert any('k=2' in line and 'k=1' in line for line in lines)
-    assert any('by_skill.disputes.pass_1' in line and 'no baseline' in line for line in lines)
+    assert any('by_flow.disputes.pass_1' in line and 'no baseline' in line for line in lines)
 
 
 def test_format_grid_prints_every_row():
     trials = [result('a', True, needs_human=True, brought=True, uses_documents=True, tone=0.9)]
     text = '\n'.join(format_grid(grid(trials, never_events={'a'}, retrieval='golden')))
-    for row in ('overall', 'skill', 'disposition', 'never-events', 'human in the loop', 'retrieval (golden)', 'tone',
+    for row in ('overall', 'flow', 'disposition', 'never-events', 'human in the loop', 'retrieval (golden)', 'tone',
                 'efficiency'):
         assert row in text
 
@@ -173,6 +175,17 @@ def test_the_baseline_round_trips(tmp_path):
     path = tmp_path / 'ar_baseline.json'
     save_baseline(path, g)
     assert load_baseline(path) == g
+
+
+def test_the_saved_baseline_loads_and_has_a_value_for_every_flow_in_the_task_file():
+    baseline = load_baseline(BASELINE_PATH)
+    current = grid([result(t.id, True, flow=t.annotations.flow, disposition=t.annotations.disposition)
+                    for t in load_tasks()], never_events=set(), retrieval='search')
+    lines = compare_grid(current, baseline)
+    flows = ('cash_application', 'collections', 'cross_flow', 'disputes')
+    assert {line.split()[0] for line in lines if line.startswith('by_flow.')} == {
+        f'by_flow.{flow}.{field}' for flow in flows for field in ('pass_1', 'pass_k')}
+    assert not [line for line in lines if 'no baseline' in line]
 
 
 def test_a_row_that_did_not_run_this_time_shows_the_old_value():

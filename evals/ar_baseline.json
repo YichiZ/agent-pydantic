@@ -7,7 +7,7 @@
     "pass_1": 1.0,
     "pass_k": 1.0
   },
-  "by_skill": {
+  "by_flow": {
     "cash_application": {
       "trials": 20,
       "tasks": 5,
@@ -20,7 +20,7 @@
       "pass_1": 1.0,
       "pass_k": 1.0
     },
-    "cross_skill": {
+    "cross_flow": {
       "trials": 12,
       "tasks": 3,
       "pass_1": 1.0,

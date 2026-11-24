@@ -43,7 +43,7 @@ exception is Fennick, whose dispute is used at three moments by three tasks. The
 | File | What it holds |
 |---|---|
 | `tasks.json` | 20 tasks in tau2-bench's task schema, one reference path and env assertions each |
-| `split_tasks.json` | `base` (all 20), `never_events`, `cross_skill` |
+| `split_tasks.json` | `base` (all 20), `never_events`, `cross_flow` |
 | `policy_solo.md` | the rules the agent reads on ticket (event) tasks |
 | `policy.md` | the same rules, plus how to talk to a customer, for the two chat tasks |
 | `documents/` | nine knowledge documents: evidence, agreements, policies and one distractor |

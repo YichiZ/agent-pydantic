@@ -75,7 +75,7 @@
     "required_documents": [],
     "annotations": {
       "customer_id": "cus_brightwell",
-      "skill": "collections",
+      "flow": "collections",
       "trigger": "ticket",
       "disposition": "act",
       "needs_human": false,
@@ -148,7 +148,7 @@
     "required_documents": [],
     "annotations": {
       "customer_id": "cus_hollis",
-      "skill": "collections",
+      "flow": "collections",
       "trigger": "chat",
       "disposition": "act",
       "needs_human": false,
@@ -207,7 +207,7 @@
     "required_documents": [],
     "annotations": {
       "customer_id": "cus_corvid",
-      "skill": "collections",
+      "flow": "collections",
       "trigger": "ticket",
       "disposition": "escalate",
       "needs_human": true,
@@ -286,7 +286,7 @@
     "required_documents": [],
     "annotations": {
       "customer_id": "cus_pinecrest",
-      "skill": "cash_application",
+      "flow": "cash_application",
       "trigger": "ticket",
       "disposition": "act",
       "needs_human": false,
@@ -413,7 +413,7 @@
     "required_documents": [],
     "annotations": {
       "customer_id": "cus_delmar",
-      "skill": "cash_application",
+      "flow": "cash_application",
       "trigger": "ticket",
       "disposition": "act",
       "needs_human": false,
@@ -524,7 +524,7 @@
     ],
     "annotations": {
       "customer_id": "cus_elmstead",
-      "skill": "cross_skill",
+      "flow": "cross_flow",
       "trigger": "ticket",
       "disposition": "act",
       "needs_human": false,
@@ -621,7 +621,7 @@
     "required_documents": [],
     "annotations": {
       "customer_id": "cus_quarry",
-      "skill": "cash_application",
+      "flow": "cash_application",
       "trigger": "ticket",
       "disposition": "ask",
       "needs_human": true,
@@ -717,7 +717,7 @@
     ],
     "annotations": {
       "customer_id": "cus_ridgeway",
-      "skill": "disputes",
+      "flow": "disputes",
       "trigger": "chat",
       "disposition": "act",
       "needs_human": false,
@@ -815,7 +815,7 @@
     ],
     "annotations": {
       "customer_id": "cus_saltmarsh",
-      "skill": "disputes",
+      "flow": "disputes",
       "trigger": "ticket",
       "disposition": "act",
       "needs_human": false,
@@ -931,7 +931,7 @@
     ],
     "annotations": {
       "customer_id": "cus_fennick",
-      "skill": "disputes",
+      "flow": "disputes",
       "trigger": "ticket",
       "disposition": "ask",
       "needs_human": true,
@@ -1015,7 +1015,7 @@
     "required_documents": [],
     "annotations": {
       "customer_id": "cus_garnet",
-      "skill": "cross_skill",
+      "flow": "cross_flow",
       "trigger": "ticket",
       "disposition": "act",
       "needs_human": false,
@@ -1109,7 +1109,7 @@
     "required_documents": [],
     "annotations": {
       "customer_id": "cus_juniper",
-      "skill": "cross_skill",
+      "flow": "cross_flow",
       "trigger": "ticket",
       "disposition": "act",
       "needs_human": false,
@@ -1168,7 +1168,7 @@
     "required_documents": [],
     "annotations": {
       "customer_id": "cus_kestrel",
-      "skill": "collections",
+      "flow": "collections",
       "trigger": "ticket",
       "disposition": "do_nothing",
       "needs_human": false,
@@ -1265,7 +1265,7 @@
     ],
     "annotations": {
       "customer_id": "cus_larkspur",
-      "skill": "disputes",
+      "flow": "disputes",
       "trigger": "ticket",
       "disposition": "refuse",
       "needs_human": false,
@@ -1391,7 +1391,7 @@
     "required_documents": [],
     "annotations": {
       "customer_id": "cus_mossgate",
-      "skill": "cash_application",
+      "flow": "cash_application",
       "trigger": "ticket",
       "disposition": "act",
       "needs_human": false,
@@ -1473,7 +1473,7 @@
     "required_documents": [],
     "annotations": {
       "customer_id": "cus_pinecrest",
-      "skill": "cash_application",
+      "flow": "cash_application",
       "trigger": "ticket",
       "disposition": "do_nothing",
       "needs_human": false,
@@ -1523,7 +1523,7 @@
     "required_documents": [],
     "annotations": {
       "customer_id": "cus_nolan",
-      "skill": "collections",
+      "flow": "collections",
       "trigger": "ticket",
       "disposition": "do_nothing",
       "needs_human": false,
@@ -1596,7 +1596,7 @@
     "required_documents": [],
     "annotations": {
       "customer_id": "cus_orchard",
-      "skill": "collections",
+      "flow": "collections",
       "trigger": "ticket",
       "disposition": "ask",
       "needs_human": true,
@@ -1731,7 +1731,7 @@
     "required_documents": [],
     "annotations": {
       "customer_id": "cus_fennick",
-      "skill": "disputes",
+      "flow": "disputes",
       "trigger": "ticket",
       "disposition": "act",
       "needs_human": false,
@@ -1887,7 +1887,7 @@
     "required_documents": [],
     "annotations": {
       "customer_id": "cus_fennick",
-      "skill": "disputes",
+      "flow": "disputes",
       "trigger": "ticket",
       "disposition": "act",
       "needs_human": false,

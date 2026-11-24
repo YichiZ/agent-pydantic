@@ -1,6 +1,6 @@
 """Dispatch by name, for the tests now and the eval runner later.
 
-- `TOOLS`: the 17 agent tools, each with its kind and the skill it lives in (plan, Piece F).
+- `TOOLS`: the 17 agent tools, each with its kind and the capability it lives in (plan, Piece F).
 - `call_tool(store, customer_id, name, arguments)`: run one tool as the agent would.
 - `call_env_function(store, name, arguments)`: run an environment step such as `decide_approval`.
 - `check_assertion(db, func_name, arguments)`: evaluate one `env_assertions` entry.
@@ -20,7 +20,7 @@ from ar.errors import InvalidArgumentError, UnknownToolError
 from ar.store import Store
 
 type Kind = Literal['read', 'write']
-type Skill = Literal['base', 'collections', 'cash_application', 'disputes']
+type CapabilityName = Literal['base', 'collections', 'cash_application', 'disputes']
 
 
 @dataclass(frozen=True)
@@ -28,11 +28,11 @@ class ToolSpec:
     name: str
     function: Callable[..., Any]
     kind: Kind
-    skill: Skill
+    capability: CapabilityName
 
 
-def _specs(kind: Kind, skill: Skill, *functions: Callable[..., Any]) -> list[ToolSpec]:
-    return [ToolSpec(f.__name__, f, kind, skill) for f in functions]
+def _specs(kind: Kind, capability: CapabilityName, *functions: Callable[..., Any]) -> list[ToolSpec]:
+    return [ToolSpec(f.__name__, f, kind, capability) for f in functions]
 
 
 TOOLS: Mapping[str, ToolSpec] = MappingProxyType({spec.name: spec for spec in [
