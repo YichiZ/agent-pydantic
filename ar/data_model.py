@@ -11,6 +11,7 @@ from datetime import date
 from decimal import Decimal
 from enum import StrEnum
 from pathlib import Path
+from types import MappingProxyType
 from typing import Annotated, Any, ClassVar, Self
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, PlainSerializer, model_validator
@@ -410,14 +411,19 @@ def _lookup[R: Row](table: Mapping[str, R], row_id: str, error: type[UnknownIdEr
     return table[row_id]
 
 
-_NUMBERED_ID = re.compile(r'(?P<prefix>.*?)(?P<number>\d+)')
+# The tables the tools add rows to: each one's id prefix and the number its first row takes.
+ID_SEQUENCES: Mapping[str, tuple[str, int]] = MappingProxyType({
+    'action_log': ('act_', 7001), 'applications': ('app_', 5000), 'approvals': ('apr_', 8000),
+    'credits': ('crd_', 4001), 'disputes': ('dsp_', 3001), 'messages': ('msg_', 6001), 'promises': ('prm_', 8501),
+})
 
 
 def next_id(db: ArDb, table_name: str) -> str:
-    """The table's id prefix plus its largest numeric suffix plus one, e.g. `apr_8000` -> `apr_8001`."""
-    matches = [_NUMBERED_ID.fullmatch(row_id) for row_id in db.table(table_name)]
-    numbered = [match for match in matches if match is not None]
-    prefixes = {match['prefix'] for match in numbered}
-    if not numbered or len(numbered) != len(matches) or len(prefixes) != 1:
-        raise ValueError(f'Table {table_name!r} has no single numbered id sequence to continue.')
-    return f'{prefixes.pop()}{max(int(match["number"]) for match in numbered) + 1}'
+    """The table's id prefix plus its largest number plus one, e.g. `apr_8000` -> `apr_8001`; an empty table starts
+    at its first number. A table with no id sequence raises `UnknownTableError`."""
+    if table_name not in ID_SEQUENCES:
+        raise UnknownTableError(table_name)
+    prefix, first = ID_SEQUENCES[table_name]
+    numbers = [int(found[1]) for row_id in db.table(table_name)
+               if (found := re.fullmatch(rf'{re.escape(prefix)}(\d+)', row_id))]
+    return f'{prefix}{max(numbers, default=first - 1) + 1}'

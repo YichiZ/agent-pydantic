@@ -6,11 +6,13 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from pydantic_ai import Tool
 from pydantic_ai.exceptions import UsageLimitExceeded
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart, ToolReturnPart, UserPromptPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from ar.agent import MAX_REQUESTS, agent, run_turn
+from ar.agent_tools import SKILL_CAPABILITIES, WRAPPERS
 from ar.data_model import InvoiceStatus, UnknownCustomerError
 from ar.environment import TOOLS, call_tool, check_assertion, fresh_store
 from ar.errors import TOOL_ERRORS
@@ -85,6 +87,18 @@ def test_base_tools_are_offered_first_and_all_17_once_every_skill_is_loaded(stor
     assert after == set(TOOLS) | {'load_capability'}
 
 
+def test_no_tool_description_names_a_row_in_the_database() -> None:
+    raw = json.loads((DB_DIR / 'db.json').read_text())
+    ids = {row_id for table in ('invoices', 'payments', 'disputes', 'approvals', 'credits', 'customers', 'contacts')
+           for row_id in raw[table]['data']}
+    described = {Tool(wrapper).tool_def.name: json.dumps([Tool(wrapper).tool_def.description,
+                                                          Tool(wrapper).tool_def.parameters_json_schema])
+                 for wrapper in WRAPPERS}
+    described |= {capability_id: line for capability_id, line in SKILL_CAPABILITIES.values()}
+    assert {name: sorted(i for i in ids if i in text) for name, text in described.items()
+            if any(i in text for i in ids)} == {}
+
+
 def test_retrieval_none_hides_search_knowledge(store: Store) -> None:
     hidden, shown = Script(), Script()
     run(hidden, store, 'cus_pinecrest', retrieval='none')
@@ -95,12 +109,18 @@ def test_retrieval_none_hides_search_knowledge(store: Store) -> None:
 
 # Instructions.
 
-def test_instructions_give_the_customer_today_and_notes_marked_stale(store: Store) -> None:
+def test_instructions_give_the_customer_and_today_but_no_notes(store: Store) -> None:
     script = Script()
-    run(script, store, 'cus_fennick')
+    run(script, store, 'cus_fennick', retrieval='none')
     instructions = script.instructions[0]
     assert 'Fennick Medical Supply' in instructions and '2026-11-16' in instructions
-    assert 'Laura Stenberg in procurement' in instructions and 'stale' in instructions
+    assert 'Laura Stenberg' not in instructions  # a note on the account: data, read through a tool
+
+
+def test_notes_are_data_from_get_account_state_marked_possibly_stale(store: Store) -> None:
+    notes = call_tool(store, 'cus_fennick', 'get_account_state')['notes']
+    assert any('Laura Stenberg in procurement' in note['text'] for note in notes)
+    assert all('stale' in note['caution'] for note in notes)
 
 
 def test_policy_chooses_the_rulebook(store: Store) -> None:

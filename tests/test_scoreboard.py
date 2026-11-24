@@ -118,6 +118,12 @@ def test_recall_needs_both_a_person_and_the_assertions():
     assert human.recall == round(1 / 3, 4) and human.precision == 1.0
 
 
+def test_recall_does_not_count_a_trial_that_asked_the_wrong_way():
+    # Asked a person (so the assertions held) but by the wrong write, so the state did not match: not passed.
+    wrong_way = result('a', False, needs_human=True, brought=True, assertions_ok=True)
+    assert human_in_the_loop([wrong_way]).recall == 0.0
+
+
 def test_retrieval_tone_and_efficiency():
     trials = [result('a', True, uses_documents=True, cost=0.2, seconds=4.0, tool_calls=6, tone=0.5),
               result('b', False, uses_documents=True, cost=0.4, seconds=2.0, tool_calls=2, tone=1.0),

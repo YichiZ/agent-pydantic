@@ -1,4 +1,4 @@
-"""Policy rules P1-P13: at least one allowed and one failing case each, on rows from db/db.json."""
+"""Policy rules P1-P15: at least one allowed and one failing case each, on rows from db/db.json."""
 from datetime import timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -154,6 +154,30 @@ def test_p8_one_matching_invoice_or_a_remittance_is_allowed(db):
     assert_allowed(apply(one_match, 'cus_quarry', 'pay_2004', 'INV-1402', '6300.00'))
 
 
+def test_p15_with_a_remittance_cash_goes_only_where_it_says(db):
+    assert_denied(apply(db, 'cus_mossgate', 'pay_2005', 'INV-2002', '4000.00'), 'P15')  # rem_2005 names INV-2001
+    assert_allowed(apply(db, 'cus_mossgate', 'pay_2005', 'INV-2001', '4000.00'))
+    bigger = db.invoice('INV-1302').model_copy(update={'amount': Decimal('12000.00')})
+    grown = db.with_rows('invoices', {'INV-1302': bigger})
+    assert_denied(apply(grown, 'cus_delmar', 'pay_2002', 'INV-1302', '10200.01'), 'P15')  # the line gives 10,200.00
+    part = Application(application_id='app_5002', payment_id='pay_2002', invoice_id='INV-1302',
+                       amount=Decimal('10000.00'), applied_at=db.today, idempotency_key='pay_2002:INV-1302')
+    applied = grown.with_rows('applications', {'app_5002': part})
+    assert_denied(apply(applied, 'cus_delmar', 'pay_2002', 'INV-1302', '200.01'), 'P15')
+    assert_allowed(apply(applied, 'cus_delmar', 'pay_2002', 'INV-1302', '200.00'))
+
+
+def test_p15_with_no_remittance_one_match_is_the_only_invoice_and_none_goes_to_a_person(db):
+    bigger = db.invoice('INV-1403').model_copy(update={'amount': Decimal('6400.00')})
+    one_match = db.with_rows('invoices', {'INV-1403': bigger})
+    assert_denied(apply(one_match, 'cus_quarry', 'pay_2004', 'INV-1403', '6300.00'), 'P15')
+    no_match = one_match.with_rows('invoices', {'INV-1402': db.invoice('INV-1402').model_copy(
+        update={'amount': Decimal('6400.00')})})
+    decision = apply(no_match, 'cus_quarry', 'pay_2004', 'INV-1402', '6300.00')
+    assert_held(decision, 'P15')
+    assert 'no open invoice' in decision.reason
+
+
 def test_p9_a_credit_needs_an_open_dispute_and_fits_it(db):
     assert_allowed(credit(db, 'cus_saltmarsh', 'dsp_3001', '378.00'))
     assert_denied(credit(db, 'cus_saltmarsh', 'dsp_3001', '378.01'), 'P9')
@@ -190,7 +214,7 @@ def test_p11_nothing_outside_the_account_and_its_children(db):
     assert_allowed(check_open_dispute(db, 'cus_ridgeway', invoice_id='INV-1501'))
     assert_allowed(check_reject_dispute(db, 'cus_larkspur', dispute_id='dsp_3005'))
     assert_allowed(check_log_promise(db, 'cus_hollis', invoice_id='INV-1101'))
-    assert_allowed(check_pause_collections(db, 'cus_hollis', invoice_id='INV-1101'))
+    assert_allowed(check_pause_collections(db, 'cus_juniper', invoice_id='INV-1702'))
 
 
 def test_p12_no_reminder_while_a_promise_is_not_yet_due(db):
@@ -201,6 +225,31 @@ def test_p12_no_reminder_while_a_promise_is_not_yet_due(db):
     lapsed = db.promises['prm_8501'].model_copy(update={'promised_date': db.today - timedelta(days=1)})
     assert_allowed(send(db.with_rows('promises', {'prm_8501': lapsed}), 'cus_kestrel', 'con_815', ['INV-1801'],
                         '$5,400.00'))
+
+
+def test_p12_a_promise_holds_off_reminders_only_if_it_covers_the_balance(db):
+    def kestrel(*amounts: str) -> Decision:
+        promise = db.promises['prm_8501']
+        promises = {f'prm_850{n}': promise.model_copy(update={'promise_id': f'prm_850{n}', 'amount': Decimal(amount)})
+                    for n, amount in enumerate(amounts, start=1)}
+        return send(db.with_rows('promises', promises), 'cus_kestrel', 'con_815', ['INV-1801'], '$5,400.00')
+
+    assert_allowed(kestrel('0.01'))
+    assert_allowed(kestrel('5399.99'))
+    assert_denied(kestrel('2700.00', '2700.00'), 'P12')  # together they cover the 5,400.00 balance
+
+
+def test_pausing_collections_takes_an_open_dispute(db):
+    assert_denied(check_pause_collections(db, 'cus_brightwell', invoice_id='INV-1001'), 'P1')
+    assert_allowed(check_pause_collections(db, 'cus_juniper', invoice_id='INV-1702'))  # dsp_3004 is open
+
+
+def test_p14_only_open_overdue_invoices_are_chased(db):
+    assert not db.invoice('INV-1003').due_date < db.today
+    assert_denied(send(db, 'cus_brightwell', 'con_801', ['INV-1003'], 'INV-1003: $5,300.00 is due.'), 'P14')
+    assert_denied(send(db, 'cus_brightwell', 'con_801', ['INV-1001', 'INV-1003'], 'Due: $17,700.00.'), 'P14')
+    assert_denied(send(db, 'cus_brightwell', 'con_801', ['INV-1000'], 'INV-1000: $0.00 is due.'), 'P14')  # paid
+    assert_allowed(send(db, 'cus_brightwell', 'con_801', ['INV-1001'], 'INV-1001: $12,400.00 is due.'))
 
 
 def test_p13_only_an_approved_approval_is_carried_out_once(db):

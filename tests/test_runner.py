@@ -88,6 +88,18 @@ def test_a_reference_path_that_policy_denies_is_a_harness_error():
         asyncio.run(run_tasks([broken_reference()], noop_agent))
 
 
+def test_a_broken_reference_path_stops_the_run_before_any_agent_trial():
+    agent = Recorder()
+    with pytest.raises(HarnessError, match='task_04'):
+        asyncio.run(run_tasks([TASKS['task_13'], broken_reference()], agent, trials=4))
+    assert agent.calls == []
+
+
+def test_a_trial_that_cannot_run_is_a_harness_error():
+    with pytest.raises(HarnessError, match='task_02.*clerk'):
+        asyncio.run(run_tasks([TASKS['task_02']], noop_agent))
+
+
 def test_a_ticket_task_is_one_solo_turn_on_the_ticket():
     calls = []
 

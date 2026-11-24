@@ -20,6 +20,7 @@ from pydantic_evals.evaluators import Evaluator, EvaluatorContext
 
 from ar.data_model import ApprovalStatus, ArDb, UnknownIdError
 from ar.environment import call_env_function, call_tool, check_assertion, fresh_store
+from ar.errors import TOOL_ERRORS
 from ar.ledger import payer_family
 from ar.run_types import AgentFn, AgentTurn, Retrieval
 from ar.store import Store
@@ -60,6 +61,14 @@ def replay(store: Store, task: Task) -> None:
     """Play the task's reference actions on `store`."""
     for action in task.evaluation_criteria.actions:
         call_tool(store, task.annotations.customer_id, action.name, action.arguments)
+
+
+def check_reference(task: Task) -> None:
+    """Raise `HarnessError` naming the task if its initial state or reference path is refused by a tool."""
+    try:
+        replay(initialize(task), task)
+    except TOOL_ERRORS as error:
+        raise HarnessError(f'{task.id}: its initial state or reference path fails: {error}') from error
 
 
 def failed_assertions(db: ArDb, task: Task) -> tuple[str, ...]:
@@ -160,7 +169,11 @@ async def run_tasks(tasks: Iterable[Task], agent_fn: AgentFn, *, trials: int = 1
                     concurrency: int = DEFAULT_CONCURRENCY, clerk: ClerkFn | None = None,
                     retrieval: Retrieval = 'search', judge: JudgeFn | None = None,
                     progress: bool = False) -> tuple[TrialResult, ...]:
-    """Every task `trials` times, at most `concurrency` at once, each trial on its own stores."""
+    """Every task `trials` times, at most `concurrency` at once, each trial on its own stores. Every task's initial
+    state and reference path is replayed first, offline, so a broken one raises before any paid trial runs."""
+    tasks = tuple(tasks)
+    for task in tasks:
+        check_reference(task)
 
     async def trial(task: Task) -> TrialResult:
         result = await run_trial(task, agent_fn, clerk=clerk, retrieval=retrieval, judge=judge)

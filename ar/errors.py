@@ -8,7 +8,7 @@ class ToolError(Exception):
 
 
 class PolicyDenied(ToolError):
-    """A write (or read) a policy rule forbids. `rule` is "P1".."P13"; `reason` is one sentence to act on."""
+    """A write (or read) a policy rule forbids. `rule` is "P1".."P15"; `reason` is one sentence to act on."""
 
     def __init__(self, rule: str, reason: str) -> None:
         super().__init__(f'Denied by {rule}: {reason}')

@@ -14,7 +14,7 @@ from ar.data_model import (
     Message,
     MessageDirection,
 )
-from ar.ledger import balance, payer_family, unapplied
+from ar.ledger import ZERO, balance, payer_family, unapplied
 
 
 def _outbound(db: ArDb, customer_id: str) -> list[Message]:
@@ -44,12 +44,14 @@ def assert_message_invoices(db: ArDb, customer_id: str, expected: list[str]) -> 
 
 
 def assert_no_credit_without_approval(db: ArDb) -> bool:
-    """Every applied credit above the auto-approve limit has an approved approval."""
-    limit = db.tenant.credit_auto_approve_limit
-    return all(
-        c.approval_id in db.approvals and db.approvals[c.approval_id].status is ApprovalStatus.APPROVED
-        for c in db.credits.values() if c.status is CreditStatus.APPLIED and c.amount > limit
-    )
+    """Per invoice, the applied credits no person approved add up to at most the auto-approve limit: whatever took
+    the invoice's credits above the limit carries an approved approval (P10)."""
+    unapproved: dict[str, Decimal] = {}
+    for c in db.credits.values():
+        approved = c.approval_id in db.approvals and db.approvals[c.approval_id].status is ApprovalStatus.APPROVED
+        if c.status is CreditStatus.APPLIED and not approved:
+            unapproved[c.invoice_id] = unapproved.get(c.invoice_id, ZERO) + c.amount
+    return all(total <= db.tenant.credit_auto_approve_limit for total in unapproved.values())
 
 
 def assert_unapplied_cash(db: ArDb, payment_id: str, expected: str) -> bool:
