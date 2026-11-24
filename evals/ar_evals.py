@@ -17,6 +17,7 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+from dotenv import load_dotenv
 from pydantic import ValidationError
 
 from ar.run_types import AgentFn
@@ -39,6 +40,7 @@ def load_agent() -> AgentFn:  # pragma: no cover - the real agent needs a model 
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    load_dotenv()  # ANTHROPIC_API_KEY from .env, found by walking up from this file; real env vars win
     try:
         tasks = load_tasks()
         splits = load_splits(task_ids={t.id for t in tasks})

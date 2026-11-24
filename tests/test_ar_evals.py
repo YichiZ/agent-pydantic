@@ -11,6 +11,7 @@ def scripted(monkeypatch, tmp_path):
     monkeypatch.setattr(ar_evals, 'load_agent', lambda: noop_agent)
     monkeypatch.setattr(ar_evals, 'haiku_clerk', one_line_clerk)
     monkeypatch.setattr(ar_evals, 'BASELINE_PATH', tmp_path / 'ar_baseline.json')
+    monkeypatch.setattr(ar_evals, 'load_dotenv', lambda: None)  # tests never read a real .env
 
 
 @pytest.mark.parametrize(('argv', 'message'), [
@@ -106,3 +107,10 @@ def test_a_malformed_task_file_stops_before_any_run(monkeypatch, capsys):
     monkeypatch.setattr(ar_evals, 'load_tasks', broken)
     assert ar_evals.main([]) == 2
     assert 'annotations missing' in capsys.readouterr().err
+
+
+def test_the_command_loads_dotenv_before_it_runs(monkeypatch):
+    calls = []
+    monkeypatch.setattr(ar_evals, 'load_dotenv', lambda: calls.append('loaded'))
+    assert ar_evals.main(['--task', 'task_13']) == 0
+    assert calls == ['loaded']
