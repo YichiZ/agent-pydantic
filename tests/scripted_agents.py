@@ -14,7 +14,7 @@ def replay_agent(task: Task) -> AgentFn:
 
     async def agent(store: Store, customer_id: str, prompt: str, *, policy: PolicyKind = 'solo',
                     retrieval: Retrieval = 'search', golden_documents: Sequence[str] = (),
-                    history: Any | None = None) -> AgentTurn:
+                    history: Any | None = None, thinking: bool = False) -> AgentTurn:
         actions = task.evaluation_criteria.actions if history is None else ()
         for action in actions:
             call_tool(store, customer_id, action.name, action.arguments)
@@ -25,20 +25,20 @@ def replay_agent(task: Task) -> AgentFn:
 
 async def noop_agent(store: Store, customer_id: str, prompt: str, *, policy: PolicyKind = 'solo',
                      retrieval: Retrieval = 'search', golden_documents: Sequence[str] = (),
-                     history: Any | None = None) -> AgentTurn:
+                     history: Any | None = None, thinking: bool = False) -> AgentTurn:
     return AgentTurn(text='Nothing to do.', cost_usd=0.0, tool_calls=0, history=history)
 
 
 async def escalate_agent(store: Store, customer_id: str, prompt: str, *, policy: PolicyKind = 'solo',
                          retrieval: Retrieval = 'search', golden_documents: Sequence[str] = (),
-                         history: Any | None = None) -> AgentTurn:
+                         history: Any | None = None, thinking: bool = False) -> AgentTurn:
     call_tool(store, customer_id, 'escalate_to_human', {'reason': 'Please check this account.'})
     return AgentTurn(text='Escalated.', cost_usd=0.02, tool_calls=1, history=history)
 
 
 async def raising_agent(store: Store, customer_id: str, prompt: str, *, policy: PolicyKind = 'solo',
                         retrieval: Retrieval = 'search', golden_documents: Sequence[str] = (),
-                        history: Any | None = None) -> AgentTurn:
+                        history: Any | None = None, thinking: bool = False) -> AgentTurn:
     raise RuntimeError('model unavailable')
 
 

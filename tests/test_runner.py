@@ -109,7 +109,8 @@ def test_a_ticket_task_is_one_solo_turn_on_the_ticket():
 
     result = trial('task_06', agent, retrieval='golden')
     assert calls == [('cus_elmstead', TASKS['task_06'].ticket,
-                      {'policy': 'solo', 'retrieval': 'golden', 'golden_documents': ('doc_deduction_reason_codes',)})]
+                      {'policy': 'solo', 'retrieval': 'golden', 'golden_documents': ('doc_deduction_reason_codes',),
+                       'thinking': False})]
     assert (result.cost_usd, result.tool_calls) == (0.5, 2)
     trial('task_06', agent, retrieval='search')
     assert calls[-1][2]['golden_documents'] == ()
@@ -153,6 +154,17 @@ def test_chat_passes_history_from_one_turn_to_the_next_and_stops_at_the_turn_lim
     agent = Recorder()
     trial('task_08', agent, clerk=chatty, max_turns=3)
     assert len(agent.calls) == 3
+
+
+def test_thinking_is_passed_to_every_agent_turn():
+    async def chatty(scenario, transcript):
+        return 'And another thing.'
+
+    chat, solo = Recorder(), Recorder()
+    trial('task_08', chat, clerk=chatty, max_turns=3, thinking=True)
+    asyncio.run(run_tasks([TASKS['task_13']], solo, trials=2, thinking=True))
+    assert [c['thinking'] for c in chat.calls] == [True] * 3
+    assert [c['thinking'] for c in solo.calls] == [True] * 2
 
 
 def test_chat_needs_a_clerk():

@@ -35,9 +35,11 @@ class AgentFn(Protocol):
         retrieval: Retrieval = 'search',
         golden_documents: Sequence[str] = (),
         history: Any | None = None,
+        thinking: bool = False,
     ) -> AgentTurn:
         """Run one turn for `customer_id`. `prompt` is the event text, or the customer's message.
 
         `golden_documents` are document ids to hand to the agent when `retrieval` is 'golden'.
+        `thinking` asks the model to reason before it answers and to return that reasoning in `history`.
         """
         ...

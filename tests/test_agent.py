@@ -11,8 +11,9 @@ from pydantic_ai import Tool
 from pydantic_ai.exceptions import UsageLimitExceeded
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart, ToolReturnPart, UserPromptPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
+from pydantic_ai.settings import ModelSettings
 
-from ar.agent import MAX_REQUESTS, agent, run_turn
+from ar.agent import MAX_REQUESTS, THINKING_SETTINGS, agent, run_turn
 from ar.agent_tools import CAPABILITY_CATALOG, WRAPPERS
 from ar.data_model import InvoiceStatus, UnknownCustomerError
 from ar.environment import TOOLS, call_tool, check_assertion, fresh_store
@@ -30,6 +31,7 @@ CAPABILITY_IDS = ('collections', 'cash-application', 'disputes')
 DONE = {'summary': 'Done.', 'actions': []}
 
 type Call = tuple[str, dict[str, Any]]
+type Step = Call | list[Call] | ModelResponse  # a whole response carries thinking or text with its calls
 
 
 @pytest.fixture
@@ -38,26 +40,35 @@ def store() -> Store:
 
 
 class Script:
-    """A model that answers each request with the next step's tool calls, then the final output.
+    """A model that answers each request with the next step (its tool calls, or a whole response), then the final
+    output.
 
-    Records, per request, the tool names it was offered, its instructions and the messages it saw.
+    Records, per request, the tool names it was offered, its instructions, its model settings and the messages it saw.
     """
 
-    def __init__(self, *steps: Call | list[Call], output: dict[str, Any] = DONE) -> None:
-        self.steps = [step if isinstance(step, list) else [step] for step in steps]
+    def __init__(self, *steps: Step, output: dict[str, Any] = DONE) -> None:
+        self.steps = [step if isinstance(step, list | ModelResponse) else [step] for step in steps]
         self.output = output
         self.offered: list[set[str]] = []
         self.instructions: list[str] = []
+        self.settings: list[ModelSettings | None] = []
         self.seen: list[list[ModelMessage]] = []
 
     def __call__(self, messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
         step = len(self.offered)
         self.offered.append({tool.name for tool in info.function_tools})
         self.instructions.append(info.instructions or '')
+        self.settings.append(info.model_settings)
         self.seen.append(list(messages))
         if step < len(self.steps):
-            return ModelResponse(parts=[ToolCallPart(name, args) for name, args in self.steps[step]])
+            return _response(self.steps[step])
         return ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, self.output)])
+
+
+def _response(step: list[Call] | ModelResponse) -> ModelResponse:
+    if isinstance(step, ModelResponse):
+        return step
+    return ModelResponse(parts=[ToolCallPart(name, args) for name, args in step])
 
 
 def load(*capability_ids: str) -> list[Call]:
@@ -285,6 +296,15 @@ def test_run_turn_reports_the_summary_tool_calls_and_a_history_that_continues(st
     prompts = [part.content for message in second.seen[0] for part in message.parts if isinstance(part, UserPromptPart)]
     assert prompts == ['Event one.', 'Event two.']
     assert again.tool_calls == 0 and len(again.history) > len(turn.history)
+
+
+def test_thinking_asks_for_summarized_adaptive_thinking_and_is_off_by_default(store: Store) -> None:
+    off, on = Script(('get_account_state', {})), Script(('get_account_state', {}))
+    run(off, store, 'cus_pinecrest')
+    run(on, store, 'cus_pinecrest', thinking=True)
+    assert off.settings == [None, None]  # no settings at all, as before thinking existed
+    assert on.settings == [THINKING_SETTINGS] * 2  # on every request of the run
+    assert THINKING_SETTINGS == {'anthropic_thinking': {'type': 'adaptive', 'display': 'summarized'}}
 
 
 def test_a_run_that_never_finishes_stops_at_the_request_limit(store: Store) -> None:

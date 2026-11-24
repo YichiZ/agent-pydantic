@@ -90,9 +90,10 @@ def labels(task: Task) -> TaskLabels:
 
 
 async def run_trial(task: Task, agent_fn: AgentFn, *, clerk: ClerkFn | None = None, retrieval: Retrieval = 'search',
-                    max_turns: int = DEFAULT_MAX_TURNS, judge: JudgeFn | None = None) -> TrialResult:
-    """One trial: TARGET by replay, ACTUAL by the agent, scored with no model. The agent crashing fails the trial;
-    a broken reference path or initial state raises."""
+                    max_turns: int = DEFAULT_MAX_TURNS, judge: JudgeFn | None = None,
+                    thinking: bool = False) -> TrialResult:
+    """One trial: TARGET by replay, ACTUAL by the agent (with `thinking` passed to every turn), scored with no model.
+    The agent crashing fails the trial; a broken reference path or initial state raises."""
     if task.user_scenario is not None and clerk is None:
         raise ValueError(f'{task.id} is a chat task and needs a clerk.')
     target = initialize(task)
@@ -100,7 +101,7 @@ async def run_trial(task: Task, agent_fn: AgentFn, *, clerk: ClerkFn | None = No
     actual = initialize(task)
     start, customer_id = actual.db, task.annotations.customer_id
     began = time.perf_counter()
-    acted = await _act(task, actual, agent_fn, clerk, retrieval, max_turns)
+    acted = await _act(task, actual, agent_fn, clerk, retrieval, max_turns, thinking)
     seconds = time.perf_counter() - began
     tone, tone_error = await score_tone(judge, task.id, customer_id, start, actual.db) if judge else (None, None)
     changes, failed = diff(project(target.db), project(actual.db)), failed_assertions(actual.db, task)
@@ -132,11 +133,11 @@ class _AgentCrashed(Exception):
 
 
 async def _act(task: Task, store: Store, agent_fn: AgentFn, clerk: ClerkFn | None, retrieval: Retrieval,
-               max_turns: int) -> _Acted:
+               max_turns: int, thinking: bool) -> _Acted:
     """Run the agent on ACTUAL: the turns it finished, and its error if it (or the clerk) raised."""
     finished: list[tuple[str, AgentTurn]] = []
     try:
-        async for prompt, turn in _turns(task, store, agent_fn, clerk, retrieval, max_turns):
+        async for prompt, turn in _turns(task, store, agent_fn, clerk, retrieval, max_turns, thinking):
             finished.append((prompt, turn))
     except _AgentCrashed as crash:  # whatever the agent under test raises is a failed trial, recorded, not a crashed run
         return _acted(finished, (TraceTurn(crash.prompt, crash.messages, reply=None),), crash.error)
@@ -152,13 +153,13 @@ def _acted(finished: Sequence[tuple[str, AgentTurn]], crashed: tuple[TraceTurn, 
 
 
 async def _turns(task: Task, store: Store, agent_fn: AgentFn, clerk: ClerkFn | None, retrieval: Retrieval,
-                 max_turns: int) -> AsyncIterator[tuple[str, AgentTurn]]:
+                 max_turns: int, thinking: bool) -> AsyncIterator[tuple[str, AgentTurn]]:
     """Each prompt the agent was given (the ticket, or the clerk's message) and the turn it took on it."""
     customer_id = task.annotations.customer_id
     golden = task.required_documents if retrieval == 'golden' else ()
     if task.ticket is not None:
         yield task.ticket, await _agent_turn(agent_fn, store, customer_id, task.ticket, policy='solo',
-                                             retrieval=retrieval, golden_documents=golden)
+                                             retrieval=retrieval, golden_documents=golden, thinking=thinking)
         return
     assert clerk is not None and task.user_scenario is not None  # checked in run_trial and by Task
     transcript: Transcript = ()
@@ -169,7 +170,7 @@ async def _turns(task: Task, store: Store, agent_fn: AgentFn, clerk: ClerkFn | N
         if STOP in said:
             return
         turn = await _agent_turn(agent_fn, store, customer_id, said, policy='chat', retrieval=retrieval,
-                                 golden_documents=golden, history=history)
+                                 golden_documents=golden, history=history, thinking=thinking)
         history, transcript = turn.history, (*transcript, ('agent', turn.text))
         yield said, turn
 
@@ -186,7 +187,7 @@ async def _agent_turn(agent_fn: AgentFn, store: Store, customer_id: str, prompt:
 
 async def run_tasks(tasks: Iterable[Task], agent_fn: AgentFn, *, trials: int = 1,
                     concurrency: int = DEFAULT_CONCURRENCY, clerk: ClerkFn | None = None,
-                    retrieval: Retrieval = 'search', judge: JudgeFn | None = None,
+                    retrieval: Retrieval = 'search', judge: JudgeFn | None = None, thinking: bool = False,
                     progress: bool = False) -> tuple[TrialResult, ...]:
     """Every task `trials` times, at most `concurrency` at once, each trial on its own stores. Every task's initial
     state and reference path is replayed first, offline, so a broken one raises before any paid trial runs."""
@@ -195,7 +196,7 @@ async def run_tasks(tasks: Iterable[Task], agent_fn: AgentFn, *, trials: int = 1
         check_reference(task)
 
     async def trial(task: Task) -> TrialResult:
-        result = await run_trial(task, agent_fn, clerk=clerk, retrieval=retrieval, judge=judge)
+        result = await run_trial(task, agent_fn, clerk=clerk, retrieval=retrieval, judge=judge, thinking=thinking)
         increment_eval_metric(COST_METRIC, result.cost_usd)
         return result
 

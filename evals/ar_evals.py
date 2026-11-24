@@ -6,14 +6,18 @@
     uv run python -m evals.ar_evals --task task_04 task_10
     uv run python -m evals.ar_evals --retrieval golden    # none | golden | search
     uv run python -m evals.ar_evals --judge               # tone score on tasks 1, 11, 12 and 18
-    uv run python -m evals.ar_evals --task task_11 --trace  # also what the agent did, step by step, in each trial
+    uv run python -m evals.ar_evals --task task_11 --trace  # also each trial's whole conversation, in order
+    uv run python -m evals.ar_evals --trace --color never # colour is on for a terminal (auto); always | never
+    uv run python -m evals.ar_evals --thinking            # the model reasons first; compared with its own baseline
     uv run python -m evals.ar_evals --save                # make this run evals/ar_baseline.json
+    uv run python -m evals.ar_evals --thinking --save     # make it evals/ar_baseline_thinking.json
 
 Exits 1 if a never-event task failed any trial or human-in-the-loop recall is below 1.0, else 0.
 """
 
 import argparse
 import asyncio
+import os
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -29,8 +33,10 @@ from evals.clerk import haiku_clerk
 from evals.judge import sonnet_judge
 from evals.scoreboard import Grid, TrialResult, compare_grid, format_grid, grid, load_baseline, save_baseline
 from evals.trace import trial_lines
+from evals.trace_color import COLOR_MODES, use_color
 
 BASELINE_PATH = Path(__file__).resolve().parent / 'ar_baseline.json'
+THINKING_BASELINE_PATH = BASELINE_PATH.with_name('ar_baseline_thinking.json')  # runs with --thinking: never mixed
 DEFAULT_SPLIT = 'base'
 NEVER_EVENTS_SPLIT = 'never_events'
 
@@ -48,11 +54,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     trials = asyncio.run(run_tasks(
         [t for t in tasks if t.id in wanted], run_turn, trials=args.trials, concurrency=args.concurrency,
         clerk=haiku_clerk, retrieval=args.retrieval, judge=sonnet_judge if args.judge else None,
-        progress=sys.stdout.isatty()))
+        thinking=args.thinking, progress=sys.stdout.isatty()))
     result = grid(trials, never_events=set(splits.get(NEVER_EVENTS_SPLIT, ())), retrieval=args.retrieval)
     failures = gate(result)
-    print('\n'.join([*task_lines(trials, trace=args.trace), '', *format_grid(result), '',
-                     *baseline_lines(result, args.save),
+    color = use_color(args.color, isatty=sys.stdout.isatty(), environ=os.environ)
+    baseline = THINKING_BASELINE_PATH if args.thinking else BASELINE_PATH
+    print('\n'.join([*task_lines(trials, trace=args.trace, color=color), '', *format_grid(result), '',
+                     *baseline_lines(result, args.save, baseline),
                      *(f'FAIL: {reason}' for reason in failures)]))
     return 1 if failures else 0
 
@@ -67,8 +75,15 @@ def parse_args(argv: Sequence[str] | None, task_ids: Sequence[str], split_names:
     parser.add_argument('--concurrency', type=positive_int, default=DEFAULT_CONCURRENCY,
                         help=f'trials at once; default {DEFAULT_CONCURRENCY}')
     parser.add_argument('--judge', action='store_true', help='score tone on tasks 1, 11, 12 and 18 (Sonnet)')
-    parser.add_argument('--trace', action='store_true', help="under each task, every trial's tool calls step by step")
-    parser.add_argument('--save', action='store_true', help=f'write the grid to {BASELINE_PATH.name}')
+    parser.add_argument('--thinking', action='store_true',
+                        help=f'the model reasons before it answers; compared with {THINKING_BASELINE_PATH.name}')
+    parser.add_argument('--trace', action='store_true',
+                        help="under each task, every trial's whole conversation: each message, the model's reasoning, "
+                             'every tool call and result in full, what it wrote')
+    parser.add_argument('--color', choices=COLOR_MODES, default='auto',
+                        help='colour the trace: auto (on a terminal unless NO_COLOR is set), always or never')
+    parser.add_argument('--save', action='store_true',
+                        help=f'write the grid to {BASELINE_PATH.name} ({THINKING_BASELINE_PATH.name} with --thinking)')
     return parser.parse_args(argv)
 
 
@@ -92,18 +107,18 @@ def gate(result: Grid) -> list[str]:
     return [reason for failed, reason in checks if failed]
 
 
-def task_lines(trials: Sequence[TrialResult], trace: bool = False) -> list[str]:
+def task_lines(trials: Sequence[TrialResult], trace: bool = False, color: bool = False) -> list[str]:
     """One line per task, in run order: passes/trials, then what went wrong in any trial. With `trace`, each
-    task's trials follow its line, one block each, and a blank line separates the tasks."""
+    task's trials follow its line, one block each (coloured with `color`), and a blank line separates the tasks."""
     groups = {task_id: [t for t in trials if t.task_id == task_id] for task_id in dict.fromkeys(t.task_id for t in trials)}
     if not trace:
         return [_task_line(task_id, group) for task_id, group in groups.items()]
     return [line for i, (task_id, group) in enumerate(groups.items())
-            for line in [*([''] if i else []), _task_line(task_id, group), *_trial_blocks(group)]]
+            for line in [*([''] if i else []), _task_line(task_id, group), *_trial_blocks(group, color)]]
 
 
-def _trial_blocks(trials: Sequence[TrialResult]) -> list[str]:
-    return [line for number, trial in enumerate(trials, 1) for line in trial_lines(number, trial)]
+def _trial_blocks(trials: Sequence[TrialResult], color: bool) -> list[str]:
+    return [line for number, trial in enumerate(trials, 1) for line in trial_lines(number, trial, color=color)]
 
 
 def _task_line(task_id: str, trials: Sequence[TrialResult]) -> str:
@@ -115,16 +130,17 @@ def _task_line(task_id: str, trials: Sequence[TrialResult]) -> str:
     return '  '.join([task_id, f'{sum(t.passed for t in trials)}/{len(trials)}', *filter(None, details)])
 
 
-def baseline_lines(result: Grid, save: bool) -> list[str]:
+def baseline_lines(result: Grid, save: bool, path: Path) -> list[str]:
+    """Save the grid to `path`, or compare it with the one saved there."""
     if save:
-        save_baseline(BASELINE_PATH, result)
-        return [f'Saved baseline to {BASELINE_PATH}.']
-    if not BASELINE_PATH.is_file():
-        return [f'No baseline yet; run with --save to create {BASELINE_PATH.name}.']
+        save_baseline(path, result)
+        return [f'Saved baseline to {path}.']
+    if not path.is_file():
+        return [f'No baseline yet; run with --save to create {path.name}.']
     try:
-        baseline = load_baseline(BASELINE_PATH)
+        baseline = load_baseline(path)
     except ValidationError as error:
-        return [f'{BASELINE_PATH} is not a saved grid ({error.error_count()} errors); run with --save to replace it.']
+        return [f'{path} is not a saved grid ({error.error_count()} errors); run with --save to replace it.']
     return ['Against the baseline:', *compare_grid(result, baseline)]
 
 

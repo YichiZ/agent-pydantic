@@ -42,13 +42,21 @@ uv run python -m evals.ar_evals --split never_events
 uv run python -m evals.ar_evals --task task_04 task_10
 uv run python -m evals.ar_evals --retrieval golden     # none | golden | search
 uv run python -m evals.ar_evals --judge                # also score tone, on Sonnet
-uv run python -m evals.ar_evals --task task_11 --trace # also what the agent did in each trial
+uv run python -m evals.ar_evals --task task_11 --trace # also each trial's whole conversation
+uv run python -m evals.ar_evals --thinking             # the model reasons before it answers
 uv run pytest -m e2e                                   # two live agent tests
 ```
 
-`--trace` prints, under each task, every trial step by step: the event (or each clerk message), each tool call
-with its arguments and outcome (a result, `DENIED` by a rule, or `HELD` for a person), the agent's reply, the rows
-it wrote, and, for a failed trial, the failed assertions and the diff against the target.
+`--trace` prints, under each task, every trial as a conversation, in the order it happened, one labelled block
+at a time: `USER` (the event, or each clerk message), `REASONING` (the model's thinking, when it returns any),
+`ASSISTANT` (its text and, last in each turn, its summary or reply), `TOOL CALL` with the complete arguments as
+JSON, and `TOOL RESULT` with the complete result (`DENIED` by a rule, `RETRY` for any other refusal, or `HELD` for
+a person with the approval id). Then `ERROR` if the run crashed, `WROTE` (the rows it added or changed), and, for a
+failed trial, `FAILED` (the assertions) and `DIFF` (against the target). Nothing is cut. The blocks are coloured
+on a terminal; `--color always` or `--color never` overrides that, and `NO_COLOR` turns it off.
+
+`--thinking` turns on adaptive thinking with summarized display, so `--trace` shows the reasoning. Its runs are
+compared with, and `--save` writes, `evals/ar_baseline_thinking.json`, never `evals/ar_baseline.json`.
 
 One task costs about $0.09 on Opus 5.5.
 
