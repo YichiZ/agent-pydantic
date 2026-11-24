@@ -253,29 +253,7 @@ def test_log_promise_refuses_bad_arguments(store, promised_date, amount):
         run(store, 'cus_hollis', 'log_promise', invoice_id='INV-1101', promised_date=promised_date, amount=amount)
 
 
-# pause_collections
-
-def test_pause_collections_on_a_disputed_invoice_changes_nothing(store):
-    assert_denied(store, 'P1', 'cus_brightwell', 'pause_collections', invoice_id='INV-1001', reason='Customer query.')
-    assert_unchanged(store, 'cus_juniper', 'pause_collections', invoice_id='INV-1702', reason='already paused')
-
-
-# request_approval and escalate_to_human
-
-def test_request_approval_writes_one_pending_approval(store):
-    before = store.db
-    result = run(store, 'cus_brightwell', 'request_approval', action='write_off', payload={'invoice_id': 'INV-1001'},
-                 reason='Customer is closing down.')
-    assert (result.status, result.approval_id) == ('held_for_approval', 'apr_8001')
-    assert changes(before, store.db) == {'approvals': {'apr_8001'}, 'action_log': {'act_7014'}}
-    assert store.db.approval('apr_8001').customer_id == 'cus_brightwell'
-
-
-@pytest.mark.parametrize('action', ['send_message', 'apply_payment', 'propose_credit', ''])
-def test_request_approval_refuses_actions_a_rule_already_covers(store, action):
-    with pytest.raises(InvalidArgumentError):
-        run(store, 'cus_brightwell', 'request_approval', action=action, payload={}, reason='r')
-
+# escalate_to_human
 
 def test_escalate_to_human_only_logs(store):
     before = store.db
@@ -342,9 +320,10 @@ def test_execute_approval_refuses_a_payment_approval_for_now(store):
 
 
 def test_execute_approval_refuses_an_action_it_cannot_carry_out(store):
-    run(store, 'cus_brightwell', 'request_approval', action='write_off', payload={}, reason='r')
-    decide(store, 'apr_8001', 'approved')
-    assert_denied(store, 'P13', 'cus_brightwell', 'execute_approval', approval_id='apr_8001')
+    write_off = store.db.approval('apr_8000').model_copy(update={'approval_id': 'apr_8001', 'action': 'write_off',
+                                                                 'executed_at': None})
+    store.swap(store.db.with_rows('approvals', {'apr_8001': write_off}))  # approved, by a person outside the tools
+    assert_denied(store, 'P13', 'cus_garnet', 'execute_approval', approval_id='apr_8001')
 
 
 # read tools
@@ -439,8 +418,6 @@ def test_bad_arguments_raise_typed_errors(store):
         call_env_function(store, 'reset_db', {})
     with pytest.raises(InvalidArgumentError):
         run(store, 'cus_hollis', 'log_promise', invoice_id='INV-1101', promised_date='2026-02-30', amount='1.00')
-    with pytest.raises(InvalidArgumentError):
-        run(store, 'cus_brightwell', 'request_approval', action='write_off', payload='everything', reason='r')
 
 
 def test_typed_values_are_accepted_too(store):
@@ -462,12 +439,12 @@ def test_fresh_store_needs_the_documents_directory(tmp_path):
 
 
 def test_registry_places_each_tool_once():
-    assert len(TOOLS) == 17
+    assert len(TOOLS) == 15
     assert sum(spec.kind == 'read' for spec in TOOLS.values()) == 7
     by_capability = {capability: {name for name, spec in TOOLS.items() if spec.capability == capability}
                      for capability in ('base', 'collections', 'cash_application', 'disputes')}
     assert by_capability['collections'] == {'send_message', 'log_promise'}
     assert by_capability['cash_application'] == {'apply_payment'}
-    assert by_capability['disputes'] == {'open_dispute', 'pause_collections', 'propose_credit', 'reject_dispute'}
-    assert {'request_approval', 'execute_approval', 'escalate_to_human'} <= by_capability['base']
+    assert by_capability['disputes'] == {'open_dispute', 'propose_credit', 'reject_dispute'}
+    assert {'execute_approval', 'escalate_to_human'} <= by_capability['base']
     assert all(spec.name == name for name, spec in TOOLS.items())

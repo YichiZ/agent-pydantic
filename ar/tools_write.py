@@ -50,7 +50,6 @@ from ar.tool_support import (
     parse_date,
     parse_ids,
     parse_money,
-    parse_payload,
     parse_text,
     require,
     require_amount,
@@ -58,8 +57,6 @@ from ar.tool_support import (
 )
 from ar.tools_disputes import apply_credit
 
-# Writes a rule already routes to a person; request_approval refuses them so the model never builds their payload.
-COVERED_BY_RULES = frozenset({'send_message', 'apply_payment', 'propose_credit'})
 DECISIONS = {'approved': ApprovalStatus.APPROVED, 'rejected': ApprovalStatus.REJECTED}
 CREDIT_AFTER = {ApprovalStatus.APPROVED: CreditStatus.APPROVED, ApprovalStatus.REJECTED: CreditStatus.REJECTED}
 MAX_PROMISE_DAYS = 30  # a promise holds off reminders (P12), so it may not reach further ahead than this
@@ -157,18 +154,6 @@ def log_promise(store: Store, customer_id: str, invoice_id: str, promised_date: 
     return commit(store, db.with_rows('promises', {promise.promise_id: promise}), 'log_promise', promise,
                   f'Customer promised {promised} on {invoice_id} by {when}.',
                   f'Logged {promise.promise_id}: {promised} on {invoice_id} by {when}.')
-
-
-def request_approval(store: Store, customer_id: str, action: str, payload: dict[str, object],
-                     reason: str) -> WriteResult:
-    """Ask a person to decide something no rule covers. Writes one pending approval."""
-    db = store.db
-    payer_family(db, customer_id)
-    action, reason = parse_text(action, 'action').strip(), parse_text(reason, 'reason')
-    if action in COVERED_BY_RULES:
-        raise InvalidArgumentError(f'Do not request approval for {action}: call {action} itself. When a rule needs a '
-                                   'person, the tool holds the write and records the approval.')
-    return hold(store, db, customer_id, action, parse_payload(payload, 'payload'), None, reason)
 
 
 def escalate_to_human(store: Store, customer_id: str, reason: str) -> WriteResult:

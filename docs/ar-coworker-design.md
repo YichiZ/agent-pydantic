@@ -11,9 +11,10 @@ Thresholds and approval rules in this document are assumptions. Sources are in s
 
 ## Terms
 
-- **Capability**: a bundle of tools the agent loads on demand, defined in code; the word is the
-  framework's own. The agent has three (collections, cash application, disputes), plus tools that
-  are always present.
+- **Capability**: a bundle of rules and tools the agent loads on demand; the word is the
+  framework's own. The agent has three (collections, cash application, disputes), plus base rules
+  and tools that are always present. A flow's rules reach the model only once it loads that
+  capability, so it loads one before it decides anything about the event.
 - **Flow**: a kind of work started by an event: collect, apply cash, resolve a dispute, or finish
   after a decision. Each eval task is labelled with the flow it exercises, or `cross_flow` when it
   needs more than one.
@@ -178,8 +179,8 @@ so it stays portable.
 ```
 db/                the role of tau2's data/tau2/domains/<name>/
   db.json            tenant ledger and action log (exists)
-  policy.md          conversational tasks
-  policy_solo.md     ticket tasks
+  policy/            the rules: base.md on every run, chat.md for conversational tasks,
+                     and one file per capability, loaded with it
   tasks.json
   split_tasks.json   base, never_events, cross_flow
   documents/         knowledge base for retrieval configurations
@@ -218,7 +219,7 @@ damaged goods, quality, delivery, duplicate charge. Size: 18 customers and 26 in
 - Read: `get_account_state`, `list_open_invoices`, `get_invoice`, `get_payment`, `get_remittance`,
   `amount_due`, `search_knowledge`.
 - Write: `apply_payment`, `send_message`, `open_dispute`, `propose_credit`, `reject_dispute`, `log_promise`,
-  `pause_collections`, `request_approval`, `execute_approval`, `escalate_to_human`.
+  `execute_approval`, `escalate_to_human`.
 - Assert methods, called by `env_assertions`: `assert_outbound_message_count`,
   `assert_last_message_amount`, `assert_no_credit_without_approval`, `assert_unapplied_cash`,
   `assert_application_count`, `assert_invoice_paused`, `assert_balance`, `assert_human_requested`,
@@ -226,7 +227,7 @@ damaged goods, quality, delivery, duplicate charge. Size: 18 customers and 26 in
 
 ### 2.3 tau2 features used
 
-- `ticket` with `policy_solo.md`: event-triggered tasks with no user in the conversation.
+- `ticket` with the base rules alone: event-triggered tasks with no user in the conversation.
 - `user_scenario`: a simulated AP clerk for the two chat tasks. The clerk only talks; tau2's user
   tools, `user_db.json` and `communicate_info` are not used.
 - `initial_state`: replays earlier actions and messages, which sets up cross-flow cases.
@@ -341,14 +342,17 @@ This keeps the first version free of workflow infrastructure. Resumable runs are
 ### 5.3 Orchestrator and capabilities
 
 One agent, three capabilities. Each has its own instructions and tools, and is loaded on
-demand.
+demand. The instructions on every run hold only what every run needs: the role, the scope of a
+run, where facts and amounts come from, when to bring in a person, what to do after a person
+decides, and that the agent loads the capability for its event before it decides to act or to do
+nothing. A flow's rules (`db/policy/<flow>.md`) arrive when its capability is loaded.
 
 | Where | Reads | Write tools |
 |---|---|---|
-| Always present | everything, through the 7 read tools | `request_approval`, `execute_approval`, `escalate_to_human` |
+| Always present | everything, through the 7 read tools | `execute_approval`, `escalate_to_human` |
 | Collections | open invoices, promises, message history, contact preferences | `send_message`, `log_promise` |
 | Cash application | payments, remittances, open invoices | `apply_payment` |
-| Disputes and deductions | dispute, evidence documents, pricing and delivery records | `open_dispute`, `pause_collections`, `propose_credit`, `reject_dispute` |
+| Disputes and deductions | dispute, evidence documents, pricing and delivery records | `open_dispute`, `propose_credit`, `reject_dispute` |
 
 Each write tool lives in one place. A short-pay needs cash application and disputes together.
 

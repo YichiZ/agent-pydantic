@@ -9,7 +9,7 @@ differs, the code and `README.md` are right. The design is in [ar-coworker-desig
 | | |
 |---|---|
 | Agent | one Pydantic AI orchestrator on Opus 5.5 (`anthropic:claude-opus-5-5`), three capabilities |
-| Tools | 17: 7 read, 10 write |
+| Tools | 15: 7 read, 8 write |
 | Policy | 15 rules in code |
 | Eval set | 20 tasks in tau2's task schema, 9 of them never-events |
 | Other models | simulated AP clerk on Haiku 5.5 (2 chat tasks; it only talks); tone judge on Sonnet 5.5 (non-gating) |
@@ -49,7 +49,7 @@ No model is involved in pass or fail.
 Reward is the product of the two. Any path to the right end state passes.
 
 The action log is left out so that a harmless extra call does not fail a correct run. A write
-that changes nothing, such as pausing an invoice that is already paused, also logs nothing. The
+that changes nothing, such as applying a payment that is already applied, also logs nothing. The
 log is still read by assertions, and by the human-in-the-loop axis to see escalations.
 
 tau2 also has `communicate_info`, a substring check on what the agent said. It is not used here:
@@ -60,7 +60,7 @@ scored on state and assertions like the rest.
 
 A run acts only on the event in its ticket. It reads the whole account, because the right amount
 and an open dispute can only be seen there, but other work on the account belongs to other
-events. `policy_solo.md` and `policy.md` both say so.
+events. The base rules, `db/policy/base.md`, say so.
 
 The database backs this up: each account holds one piece of actionable work, plus distractors
 that are plainly not actionable, such as an invoice that is not yet due. Without that, an agent
@@ -119,8 +119,9 @@ invoices.
 
 ### 2.5 The other files in the eval set
 
-- `db/policy_solo.md` and `db/policy.md`: the rules in prose, for ticket and chat tasks. They say
-  the same things as the policy code in section 5, in words the agent reads.
+- `db/policy/`: the rules in prose. `base.md` on every run, `chat.md` added for chat tasks, and
+  one file per capability that comes with it when loaded. They say the same things as the policy
+  code in section 5, in words the agent reads.
 - `db/documents/`: nine short JSON documents. Deduction reason codes (task 6), proof of delivery
   for INV-1502 (task 9), damage report for INV-1503 (task 10), proof of delivery for the Larkspur
   invoice (task 14), Ridgeway's and Garnet's pricing agreements, the credit approval policy, the
@@ -170,11 +171,11 @@ because it has not been compared with human labels.
 db/
   db.json            exists; gains rows for tasks 13 to 18
   README.md          exists
-  tasks.json  split_tasks.json  policy.md  policy_solo.md  documents/
+  tasks.json  split_tasks.json  policy/  documents/
 ar/
   data_model.py  ledger.py  policy.py  tools.py  agent.py
 evals/
-  scoreboard.py      exists: summarize, compare, rows_from
+  scoreboard.py      the grid of section 2.6, compared with a baseline
   ar_runner.py       scoring and the trial loop
   ar_evals.py        command-line entry point
 tests/
@@ -281,8 +282,6 @@ row.
 | `propose_credit` | write | `dispute_id, amount, reason` | under the limit: credit applied, dispute resolved, invoice unpaused. Over it: credit proposed and approval pending |
 | `reject_dispute` | write | `dispute_id, reason` | dispute resolved as invalid; invoice unpaused |
 | `log_promise` | write | `invoice_id, promised_date, amount` | new promise |
-| `pause_collections` | write | `invoice_id, reason` | nothing if the invoice is already paused; refused (P1) without an open dispute, since opening a dispute is what pauses collections |
-| `request_approval` | write | `action, payload, reason` | new pending approval, for a situation no rule covers. No task's reference path uses it |
 | `execute_approval` | write | `approval_id` | carries out the stored action of an approved approval. Built for credits (task 19) and message drafts; a payment approval needs the reviewer's choice of invoice and is left for later |
 | `escalate_to_human` | write | `reason` | action log entry only |
 
@@ -318,8 +317,8 @@ Then `tests/test_tasks.py`, which makes the eval set executable with no model:
 
 Per task and trial: load a fresh database, replay the reference actions on one copy, run the agent
 on another, score as in section 2.2. Chat tasks alternate between the agent and the clerk, who has a scenario and no tools, until the
-clerk is done or a turn limit is reached. Results go through `scoreboard.summarize` and
-`compare`, extended to print the grid in section 2.6.
+clerk is done or a turn limit is reached. Results go through `scoreboard.grid` and
+`compare_grid`, which print the grid in section 2.6 and its change from the baseline.
 
 ```bash
 uv run python -m evals.ar_evals                       # all tasks, one trial
@@ -345,16 +344,17 @@ passes only tasks 13, 16 and 17.
 - Model: Opus 5.5, in one constant.
 - One `Agent`; dependencies carry the store and the customer id; the output is a one-line summary
   and the actions taken.
-- Base instructions: the role, "amounts come from `amount_due`", and the policy text.
+- Base instructions: the role and the base rules (`db/policy/base.md`, plus `chat.md` in a chat).
+  Each capability carries its flow's rules, which reach the model only when it loads the capability.
 - Three capabilities loaded on demand, and a base set that is always present. The pattern is the
   bank agent's, in `bank_support.py` at commit `18b9d38`.
 
   | Where | Tools |
   |---|---|
-  | Always present | the 7 read tools, `request_approval`, `execute_approval`, `escalate_to_human` |
+  | Always present | the 7 read tools, `execute_approval`, `escalate_to_human` |
   | Collections | `send_message`, `log_promise` |
   | Cash application | `apply_payment` |
-  | Disputes | `open_dispute`, `pause_collections`, `propose_credit`, `reject_dispute` |
+  | Disputes | `open_dispute`, `propose_credit`, `reject_dispute` |
 
   Each tool lives in one place. Task 6, a short-pay, therefore needs two capabilities loaded, which is
   what makes it cross-flow.
@@ -362,7 +362,7 @@ passes only tasks 13, 16 and 17.
   `get_account_state` as data.
 - A denied write reaches the model as a retry carrying the rule's reason.
 
-Tests first, with a scripted `FunctionModel`: 17 tools once all capabilities are loaded; a scripted
+Tests first, with a scripted `FunctionModel`: 15 tools once all capabilities are loaded; a scripted
 `send_message` on INV-1702 comes back as a retry naming P1; a scripted run of task 4 leaves
 INV-1301 paid; an unknown customer id fails before any model call.
 
@@ -454,9 +454,11 @@ Steps 1 to 3 were merged this way as pull requests 2, 3 and 1.
 
 - **Runs are event-scoped.** A run reads the whole account and acts only on its event. Each
   account in the database holds one piece of actionable work.
-- **17 tools, not 15.** Task 14 needs `reject_dispute` for an invalid claim, and task 19 needs
-  `execute_approval` to carry out an approved action. Each tool belongs to one capability or the base
-  set.
+- **17 tools, not 15, then 15 again.** Task 14 needs `reject_dispute` for an invalid claim, and task 19
+  needs `execute_approval` to carry out an approved action. Each tool belongs to one capability or the
+  base set. Two were removed later: a tool to pause collections, which only an open dispute may do and
+  opening it already does, and a tool to request approval for a case no rule covers, which no task
+  used and `escalate_to_human` covers.
 - **15 policy rules, not 11.** P12, no reminder while a promise is open. P13, nothing is carried
   out unless its approval is approved. P14, a message may cover only open, overdue invoices. P15, an
   application must follow the remittance, and unidentified cash is held for a person.

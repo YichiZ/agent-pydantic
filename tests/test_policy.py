@@ -13,7 +13,6 @@ from ar.policy import (
     check_apply_payment,
     check_execute_approval,
     check_invoice_scope,
-    check_pause_collections,
     check_propose_credit,
     check_reject_dispute,
     check_scope,
@@ -198,11 +197,11 @@ def test_p11_nothing_outside_the_account_and_its_children(db):
     assert_denied(credit(db, 'cus_brightwell', 'dsp_3001', '378.00'), 'P11')
     assert_denied(check_invoice_scope(db, 'cus_brightwell', invoice_id='INV-1501'), 'P11')
     assert_denied(check_reject_dispute(db, 'cus_brightwell', dispute_id='dsp_3005'), 'P11')
-    assert_denied(check_pause_collections(db, 'cus_brightwell', invoice_id='INV-1101'), 'P11')
+    assert_denied(check_invoice_scope(db, 'cus_brightwell', invoice_id='INV-1101'), 'P11')
     assert_denied(check_execute_approval(db, 'cus_brightwell', approval_id='apr_8000'), 'P11')
     assert_allowed(check_invoice_scope(db, 'cus_ridgeway', invoice_id='INV-1501'))
     assert_allowed(check_reject_dispute(db, 'cus_larkspur', dispute_id='dsp_3005'))
-    assert_allowed(check_pause_collections(db, 'cus_juniper', invoice_id='INV-1702'))
+    assert_allowed(check_invoice_scope(db, 'cus_hollis', invoice_id='INV-1101'))
 
 
 def test_p12_no_reminder_while_a_promise_is_not_yet_due(db):
@@ -225,11 +224,6 @@ def test_p12_a_promise_holds_off_reminders_only_if_it_covers_the_balance(db):
     assert_allowed(kestrel('0.01'))
     assert_allowed(kestrel('5399.99'))
     assert_denied(kestrel('2700.00', '2700.00'), 'P12')  # together they cover the 5,400.00 balance
-
-
-def test_pausing_collections_takes_an_open_dispute(db):
-    assert_denied(check_pause_collections(db, 'cus_brightwell', invoice_id='INV-1001'), 'P1')
-    assert_allowed(check_pause_collections(db, 'cus_juniper', invoice_id='INV-1702'))  # dsp_3004 is open
 
 
 def test_p14_only_open_overdue_invoices_are_chased(db):

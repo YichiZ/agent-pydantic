@@ -1,7 +1,7 @@
-"""The AR coworker: one Pydantic AI agent over the 17 tools, and `run_turn`, which implements `ar.run_types.AgentFn`.
+"""The AR coworker: one Pydantic AI agent over the 15 tools, and `run_turn`, which implements `ar.run_types.AgentFn`.
 
-The rulebook (`db/policy_solo.md` or `db/policy.md`) is the agent's instructions; it is read from the directory
-that holds the store's documents. Tools and capabilities are in `ar.agent_tools`.
+The instructions on every run are the base rules (`db/policy/base.md`), plus `db/policy/chat.md` in a chat. A
+flow's own rules come with its capability when the model loads it. Tools and capabilities are in `ar.agent_tools`.
 """
 
 import json
@@ -13,7 +13,7 @@ from pydantic_ai import Agent, RunContext, ToolOutput
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
 from pydantic_ai.usage import UsageLimits
 
-from ar.agent_tools import BASE_TOOLS, CAPABILITIES, AgentDeps
+from ar.agent_tools import BASE_TOOLS, CAPABILITIES, AgentDeps, rules
 from ar.run_types import AgentTurn, PolicyKind, Retrieval
 from ar.store import Store
 
@@ -21,9 +21,10 @@ MODEL = 'anthropic:claude-opus-5-5'
 MAX_REQUESTS = 25  # one run may not loop forever: the 26th model request raises UsageLimitExceeded
 TOOL_RETRIES = 3  # refusals a run may hit per tool before it fails
 OUTPUT_TOOL = 'final_result'
-POLICY_FILES: Mapping[PolicyKind, str] = {'solo': 'policy_solo.md', 'chat': 'policy.md'}
 ROLE = ('You handle one accounts receivable event for one customer account, through your tools. '
-        'The rulebook below is your policy; follow it exactly.')
+        'The rules below, and those each capability brings when you load it, are your policy; follow them exactly.')
+_SOLO = f'{ROLE}\n\n{rules("base")}'
+RULEBOOK: Mapping[PolicyKind, str] = {'solo': _SOLO, 'chat': f'{_SOLO}\n\n{rules("chat")}'}
 
 
 class TurnOutput(BaseModel):
@@ -47,9 +48,7 @@ agent = Agent(
 
 @agent.instructions
 def rulebook(ctx: RunContext[AgentDeps]) -> str:
-    # ponytail: re-reads a 6 KB file per request; cache by path if runs get long.
-    policy = (ctx.deps.store.documents_dir.parent / POLICY_FILES[ctx.deps.policy]).read_text()
-    return f'{ROLE}\n\n{policy}'
+    return RULEBOOK[ctx.deps.policy]
 
 
 @agent.instructions

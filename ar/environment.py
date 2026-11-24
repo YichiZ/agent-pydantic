@@ -1,6 +1,6 @@
 """Dispatch by name, for the tests and the eval runner.
 
-- `TOOLS`: the 17 agent tools, each with its kind and the capability it lives in (plan, Piece F).
+- `TOOLS`: the 15 agent tools, each with its kind and the capability it lives in (plan, Piece F).
 - `call_tool(store, customer_id, name, arguments)`: run one tool as the agent would.
 - `call_env_function(store, name, arguments)`: run an environment step such as `decide_approval`.
 - `check_assertion(db, func_name, arguments)`: evaluate one `env_assertions` entry.
@@ -38,11 +38,11 @@ def _specs(kind: Kind, capability: CapabilityName, *functions: Callable[..., Any
 TOOLS: Mapping[str, ToolSpec] = MappingProxyType({spec.name: spec for spec in [
     *_specs('read', 'base', tools_read.get_account_state, tools_read.list_open_invoices, tools_read.get_invoice,
             tools_read.get_payment, tools_read.get_remittance, tools_read.amount_due, tools_read.search_knowledge),
-    *_specs('write', 'base', tools_write.request_approval, tools_write.execute_approval, tools_write.escalate_to_human),
+    *_specs('write', 'base', tools_write.execute_approval, tools_write.escalate_to_human),
     *_specs('write', 'collections', tools_write.send_message, tools_write.log_promise),
     *_specs('write', 'cash_application', tools_write.apply_payment),
-    *_specs('write', 'disputes', tools_disputes.open_dispute, tools_disputes.pause_collections,
-            tools_disputes.propose_credit, tools_disputes.reject_dispute),
+    *_specs('write', 'disputes', tools_disputes.open_dispute, tools_disputes.propose_credit,
+            tools_disputes.reject_dispute),
 ]})
 
 ENV_FUNCTIONS: Mapping[str, Callable[..., Any]] = MappingProxyType({'decide_approval': tools_write.decide_approval})

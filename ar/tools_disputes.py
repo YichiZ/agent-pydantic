@@ -1,4 +1,4 @@
-"""Dispute write tools: open_dispute, pause_collections, propose_credit, reject_dispute.
+"""Dispute write tools: open_dispute, propose_credit, reject_dispute.
 
 Plain functions of `(store, customer_id, ...)`. Each checks policy, swaps in a new database and
 logs once; a denied write raises `PolicyDenied` and leaves the store as it was.
@@ -12,7 +12,6 @@ from ar.ledger import balance
 from ar.policy import (
     Outcome,
     check_invoice_scope,
-    check_pause_collections,
     check_propose_credit,
     check_reject_dispute,
 )
@@ -52,20 +51,6 @@ def open_dispute(store: Store, customer_id: str, invoice_id: str, category: str,
         db = db.with_rows('invoices', {invoice_id: invoice.model_copy(update={'collections_paused': True})})
     return commit(store, db, 'open_dispute', dispute, f'Opened {kind} dispute for {contested} on {invoice_id}.',
                   f'Opened {dispute.dispute_id}: {kind}, {contested} on {invoice_id}. Collections on it are paused.')
-
-
-def pause_collections(store: Store, customer_id: str, invoice_id: str, reason: str) -> WriteResult:
-    """Opening a dispute is what pauses collections. This changes nothing on an invoice with an open dispute (it is
-    already paused) and is refused (P1) on an invoice without one."""
-    db = store.db
-    invoice_id, reason = parse_text(invoice_id, 'invoice_id'), parse_text(reason, 'reason')
-    require(check_pause_collections(db, customer_id, invoice_id=invoice_id))
-    invoice = db.invoice(invoice_id)
-    if invoice.collections_paused:
-        return unchanged(invoice, f'Collections on {invoice_id} are already paused; nothing to do.')
-    paused = invoice.model_copy(update={'collections_paused': True})
-    return commit(store, db.with_rows('invoices', {invoice_id: paused}), 'pause_collections', paused, reason,
-                  f'Paused collections on {invoice_id}.')
 
 
 def propose_credit(store: Store, customer_id: str, dispute_id: str, amount: str | Decimal,

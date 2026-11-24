@@ -7,9 +7,9 @@ the run stops), or denied with a reason the agent reads before it changes course
 over between runs except what is in the database, so one run hands work to a later one by what it
 writes there.
 
-These flows are what the eval tasks (`db/tasks.json`) and the
-rules the agent reads ([`db/policy_solo.md`](../db/policy_solo.md)) specify; the tools and policy
-code they go through exist and are tested.
+These flows are what the eval tasks (`db/tasks.json`) and the rules the agent reads
+([`db/policy/`](../db/policy/)) specify. The base rules hold on every event; each flow's rules come
+with its capability, which the agent loads before it decides what the event needs.
 
 ## The five triggers
 
@@ -25,9 +25,8 @@ code they go through exist and are tested.
 
 ![How the flows connect](ar-flow-overview.svg)
 
-Every write the flows make goes through policy code first, except the two hand-overs to a person,
-which check no rule: `escalate_to_human` only logs the hand-over (task 3), and `request_approval`,
-for a case no rule covers, only records a pending approval.
+Every write the flows make goes through policy code first, except the hand-over to a person, which
+checks no rule: `escalate_to_human` only logs the hand-over (task 3, or a case no rule covers).
 
 ## Collect (`aging_check`)
 
@@ -94,8 +93,8 @@ carried out. A rejected action is never carried out or proposed again.
 
 ![customer conversation flow](ar-flow-customer-conversation.svg)
 
-The chat is the agent's reply; it sends no separate message. The rules in
-[`db/policy.md`](../db/policy.md) apply as on any event.
+The chat is the agent's reply; it sends no separate message. The rules apply as on any event, with
+[`db/policy/chat.md`](../db/policy/chat.md) added to the base.
 
 | What the agent finds | What it does | End state | Task |
 |---|---|---|---|
