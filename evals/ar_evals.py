@@ -6,6 +6,7 @@
     uv run python -m evals.ar_evals --task task_04 task_10
     uv run python -m evals.ar_evals --retrieval golden    # none | golden | search
     uv run python -m evals.ar_evals --judge               # tone score on tasks 1, 11, 12 and 18
+    uv run python -m evals.ar_evals --task task_11 --trace  # also what the agent did, step by step, in each trial
     uv run python -m evals.ar_evals --save                # make this run evals/ar_baseline.json
 
 Exits 1 if a never-event task failed any trial or human-in-the-loop recall is below 1.0, else 0.
@@ -21,12 +22,13 @@ from dotenv import load_dotenv
 from pydantic import ValidationError
 
 from ar.run_types import AgentFn
-from evals.ar_projection import TableDiff
+from evals.ar_projection import diff_text
 from evals.ar_runner import DEFAULT_CONCURRENCY, run_tasks
 from evals.ar_tasks import TaskFileError, load_splits, load_tasks
 from evals.clerk import haiku_clerk
 from evals.judge import sonnet_judge
 from evals.scoreboard import Grid, TrialResult, compare_grid, format_grid, grid, load_baseline, save_baseline
+from evals.trace import trial_lines
 
 BASELINE_PATH = Path(__file__).resolve().parent / 'ar_baseline.json'
 DEFAULT_SPLIT = 'base'
@@ -55,7 +57,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         progress=sys.stdout.isatty()))
     result = grid(trials, never_events=set(splits.get(NEVER_EVENTS_SPLIT, ())), retrieval=args.retrieval)
     failures = gate(result)
-    print('\n'.join([*task_lines(trials), '', *format_grid(result), '', *baseline_lines(result, args.save),
+    print('\n'.join([*task_lines(trials, trace=args.trace), '', *format_grid(result), '',
+                     *baseline_lines(result, args.save),
                      *(f'FAIL: {reason}' for reason in failures)]))
     return 1 if failures else 0
 
@@ -70,6 +73,7 @@ def parse_args(argv: Sequence[str] | None, task_ids: Sequence[str], split_names:
     parser.add_argument('--concurrency', type=positive_int, default=DEFAULT_CONCURRENCY,
                         help=f'trials at once; default {DEFAULT_CONCURRENCY}')
     parser.add_argument('--judge', action='store_true', help='score tone on tasks 1, 11, 12 and 18 (Sonnet)')
+    parser.add_argument('--trace', action='store_true', help="under each task, every trial's tool calls step by step")
     parser.add_argument('--save', action='store_true', help=f'write the grid to {BASELINE_PATH.name}')
     return parser.parse_args(argv)
 
@@ -94,23 +98,27 @@ def gate(result: Grid) -> list[str]:
     return [reason for failed, reason in checks if failed]
 
 
-def task_lines(trials: Sequence[TrialResult]) -> list[str]:
-    """One line per task, in run order: passes/trials, then what went wrong in any trial."""
-    return [_task_line(task_id, [t for t in trials if t.task_id == task_id])
-            for task_id in dict.fromkeys(t.task_id for t in trials)]
+def task_lines(trials: Sequence[TrialResult], trace: bool = False) -> list[str]:
+    """One line per task, in run order: passes/trials, then what went wrong in any trial. With `trace`, each
+    task's trials follow its line, one block each, and a blank line separates the tasks."""
+    groups = {task_id: [t for t in trials if t.task_id == task_id] for task_id in dict.fromkeys(t.task_id for t in trials)}
+    if not trace:
+        return [_task_line(task_id, group) for task_id, group in groups.items()]
+    return [line for i, (task_id, group) in enumerate(groups.items())
+            for line in [*([''] if i else []), _task_line(task_id, group), *_trial_blocks(group)]]
+
+
+def _trial_blocks(trials: Sequence[TrialResult]) -> list[str]:
+    return [line for number, trial in enumerate(trials, 1) for line in trial_lines(number, trial)]
 
 
 def _task_line(task_id: str, trials: Sequence[TrialResult]) -> str:
     failed = sorted({label for t in trials for label in t.failed_assertions})
-    diffs = sorted({_diff_text(d) for t in trials for d in t.diff})
+    diffs = sorted({diff_text(d) for t in trials for d in t.diff})
     errors = sorted({t.error for t in trials if t.error})
     details = [f'failed: {"; ".join(failed)}' if failed else '', f'db: {"; ".join(diffs)}' if diffs else '',
                f'error: {"; ".join(errors)}' if errors else '']
     return '  '.join([task_id, f'{sum(t.passed for t in trials)}/{len(trials)}', *filter(None, details)])
-
-
-def _diff_text(d: TableDiff) -> str:
-    return ' '.join([d.table, *(f'+{i}' for i in d.added), *(f'-{i}' for i in d.removed), *(f'~{c}' for c in d.changed)])
 
 
 def baseline_lines(result: Grid, save: bool) -> list[str]:

@@ -7,9 +7,10 @@ retrieval, tone and efficiency, computed by pure functions from `TrialResult`s.
 
 from collections import Counter
 from collections.abc import Callable, Collection, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from statistics import mean
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
@@ -68,6 +69,25 @@ class TaskLabels:
 
 
 @dataclass(frozen=True)
+class TraceTurn:
+    """One agent turn, for `--trace`."""
+
+    prompt: str  # the event text, or the clerk's message
+    history: Any  # the turn's `AgentTurn.history` (the whole conversation so far; opaque from a scripted agent),
+    #               or, if the agent crashed on this turn, the messages its run had exchanged by then
+    reply: str | None  # the agent's summary, or its reply to the clerk; None if it crashed on this turn
+
+
+@dataclass(frozen=True)
+class TrialTrace:
+    """What the agent did in one trial, for `--trace`. Never scored."""
+
+    chat: bool = False
+    turns: tuple[TraceTurn, ...] = ()
+    wrote: tuple[TableDiff, ...] = ()  # the agent's store after it ran against before: rows it added or changed
+
+
+@dataclass(frozen=True)
 class TrialResult:
     """One trial of one task, as scored by the runner."""
 
@@ -85,6 +105,7 @@ class TrialResult:
     error: str | None = None  # the agent's exception, if it crashed
     tone: float | None = None  # judge score, 0 to 1; never part of passed
     tone_error: str | None = None
+    trace: TrialTrace = field(default_factory=TrialTrace)
 
 
 class _Frozen(BaseModel):

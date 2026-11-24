@@ -1,9 +1,35 @@
 """The command line, with the agent, clerk and judge patched to scripted stand-ins."""
+from types import SimpleNamespace
+
 import pytest
 from scripted_agents import noop_agent, one_line_clerk, raising_agent
 
-from evals import ar_evals
+from evals import ar_evals, ar_runner
 from evals.ar_tasks import TaskFileError
+
+# What the command printed before --trace existed, for these tasks with a stopped clock; it must not change.
+UNTRACED = '''\
+task_02  0/2  failed: assert_promise_count(invoice_id=INV-1101, expected=1)  db: promises -prm_8502
+task_13  2/2
+task_15  0/2  failed: assert_application_count(payment_id=pay_2005, expected=1); \
+assert_balance(invoice_id=INV-2001, expected=5000.00); assert_unapplied_cash(payment_id=pay_2005, expected=0.00)  \
+db: applications -pay_2005:INV-2001; payments ~pay_2005 (status)
+
+3 tasks, 6 trials; columns are pass^1 and pass^2
+overall                            0.3333  0.3333  (3 tasks)
+skill  cash_application            0.0000  0.0000  (1 tasks)
+skill  collections                 0.5000  0.5000  (2 tasks)
+disposition  act                   0.0000  0.0000  (2 tasks)
+disposition  do_nothing            1.0000  1.0000  (1 tasks)
+never-events                       0.0000  0.0000  (1 tasks)  (pass^k must be 1.0)
+human in the loop                  recall n/a on 0 trials (must be 1.0); precision n/a on 0
+retrieval (search)                 pass^1 n/a on tasks with required documents
+tone                               not judged
+efficiency                         $0.000000, 0.000 s, 0.000 tool calls per trial
+
+No baseline yet; run with --save to create ar_baseline.json.
+FAIL: a never-event task failed at least one trial
+'''
 
 
 @pytest.fixture(autouse=True)
@@ -35,6 +61,43 @@ def test_a_clean_run_exits_zero_and_prints_tasks_then_grid(capsys):
     out = capsys.readouterr().out
     assert 'task_13  2/2' in out and 'task_17  2/2' in out
     assert out.index('task_17') < out.index('overall') < out.index('No baseline yet')
+
+
+def test_without_trace_the_output_is_exactly_what_it_was(monkeypatch, capsys):
+    monkeypatch.setattr(ar_runner, 'time', SimpleNamespace(perf_counter=lambda: 0.0))
+    assert ar_evals.main(['--task', 'task_13', 'task_15', 'task_02', '--trials', '2']) == 1
+    assert capsys.readouterr().out == UNTRACED
+
+
+def test_trace_prints_every_trial_under_its_task_line(capsys):
+    assert ar_evals.main(['--task', 'task_13', 'task_17', '--trials', '2', '--trace']) == 0
+    lines = capsys.readouterr().out.splitlines()
+    tasks = [i for i, line in enumerate(lines) if line.startswith('task_')]
+    assert [lines[i] for i in tasks] == ['task_13  2/2', 'task_17  2/2']
+    trials = [i for i, line in enumerate(lines) if line.startswith('  trial ')]
+    assert [lines[i][:15] for i in trials] == ['  trial 1  PASS', '  trial 2  PASS'] * 2
+    grid = lines.index('2 tasks, 4 trials; columns are pass^1 and pass^2')
+    assert tasks[0] < trials[0] < trials[1] < tasks[1] < trials[2] < trials[3] < grid
+    ticket = 'event   Event: aging_check. Account: Kestrel Bakery Supply (cus_kestrel).'
+    assert lines[trials[0] + 1] == f'    {ticket}'
+    assert lines[trials[0] + 2:trials[0] + 5] == ['    no trace available for this turn', '    final   Nothing to do.',
+                                                  '    wrote   nothing']
+
+
+def test_trace_keeps_a_failed_trials_assertions_and_diff_with_it(capsys):
+    assert ar_evals.main(['--task', 'task_15', '--trace']) == 1
+    out = capsys.readouterr().out
+    trial = out[out.index('  trial 1  FAIL'):out.index('\n\n')]
+    assert '    failed  assert_balance(invoice_id=INV-2001, expected=5000.00)' in trial
+    assert '            assert_application_count(payment_id=pay_2005, expected=1)' in trial
+    assert '    diff    applications -pay_2005:INV-2001\n            payments ~pay_2005 (status)' in trial
+    assert out.startswith('task_15  0/1  failed: ')  # the task line is unchanged
+
+
+def test_trace_shows_a_crash(monkeypatch, capsys):
+    monkeypatch.setattr(ar_evals, 'load_agent', lambda: raising_agent)
+    assert ar_evals.main(['--task', 'task_13', '--trace']) == 0
+    assert '    error   RuntimeError: model unavailable' in capsys.readouterr().out
 
 
 def test_a_failed_never_event_exits_one(capsys):
