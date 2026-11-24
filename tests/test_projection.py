@@ -34,7 +34,7 @@ def with_actions(task: Task, actions: list[Action]) -> Task:
 
 
 def test_most_reference_paths_write_free_text():
-    assert len(WRITES_TEXT) == 11
+    assert len(WRITES_TEXT) == 12
 
 
 @pytest.mark.parametrize('task_id', WRITES_TEXT)

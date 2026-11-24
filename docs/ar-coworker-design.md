@@ -268,14 +268,19 @@ second half of the approval flow.
 | 19 | Disputes | ticket | A person approved the over-limit credit | Credit applied; dispute resolved; invoice unpaused | the run after an approval |
 | 20 | Disputes | ticket | A person rejected the over-limit credit, with a note saying why | Dispute rejected; nothing applied | the run after a rejection |
 
-By disposition, the 20 tasks are: act 12 (1, 2, 4, 5, 6, 8, 9, 11, 12, 15, 19, 20), ask for
+Task 21 came later, from a live run on an unscored event: an aging check on task 12's account after
+its dispute was rejected. The agent opened the rejected claim again as a new dispute and chased only
+the other invoice. The right end state is one reminder for both invoices.
+
+By disposition, the 21 tasks are: act 13 (1, 2, 4, 5, 6, 8, 9, 11, 12, 15, 19, 20, 21), ask for
 approval 3 (7, 10, 18), escalate 1 (3), do nothing or refuse 4 (13, 14, 16, 17). Escalation is still
-thin and is the next place to add tasks. Tasks 14, 15, 16 and 20 join the never-events split.
+thin and is the next place to add tasks. Tasks 14, 15, 16, 20 and 21 join the never-events split.
 
 `reward_basis` is `["DB", "ENV_ASSERTION"]` for every task.
 
 Each account in the database holds the work for one task, because a run acts only on its event
-(section 5.2). Tasks 10, 19 and 20 share an account: they are one dispute at three moments.
+(section 5.2). Tasks 10, 19 and 20 share an account: they are one dispute at three moments. Tasks 12
+and 21 share another: one dispute open, then rejected.
 
 ### 2.5 What carries over from the bank agent
 

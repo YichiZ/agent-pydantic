@@ -11,14 +11,15 @@ The eval set is built first and is the specification for the agent that follows.
 The agent, the eval runner and a saved baseline exist.
 
 - Built: [design](docs/ar-coworker-design.md), [implementation plan](docs/ar-coworker-implementation.md),
-  synthetic AR database, eval set of 20 tasks, data model and ledger, 15 policy rules, 15 tools,
+  synthetic AR database, eval set of 21 tasks, data model and ledger, 15 policy rules, 15 tools,
   the agent (one Pydantic AI orchestrator on Opus 5.5 with three capabilities loaded on demand), and the
   eval runner.
-- Baseline (`evals/ar_baseline.json`): all 20 tasks pass on each of 4 trials, 80 runs in all, at
-  about $0.09 and 6.4 seconds per run.
-- What that does and does not show: the agent follows the rulebook reliably on these scenarios. A
-  perfect score also means the set no longer separates a good agent from a better one. Harder
-  tasks are the next step; see "not covered yet" in [the flows page](docs/ar-flows.md).
+- Baseline (`evals/ar_baseline.json`): all 20 tasks of the set at the time pass on each of 4 trials, 80 runs
+  in all, at about $0.09 and 6.4 seconds per run. `task_21`, added since and not in the baseline, fails on the
+  current agent: after a dispute is rejected, the agent opens the same claim again as a new dispute.
+- What that does and does not show: the agent follows the rulebook reliably on those 20 scenarios. A
+  perfect score also meant the set no longer separated a good agent from a better one; `task_21` is the
+  first harder task. More are the next step; see "not covered yet" in [the flows page](docs/ar-flows.md).
 
 ## Setup
 
@@ -36,7 +37,7 @@ uv run pytest --cov=ar --cov=evals
 These call a real model and need `ANTHROPIC_API_KEY` in `.env`:
 
 ```bash
-uv run python -m evals.ar_evals                        # all 20 tasks, one trial; prints the grid
+uv run python -m evals.ar_evals                        # all 21 tasks, one trial; prints the grid
 uv run python -m evals.ar_evals --trials 4             # pass^4
 uv run python -m evals.ar_evals --split never_events
 uv run python -m evals.ar_evals --task task_04 task_10
@@ -63,9 +64,9 @@ Events are not scored: there is no reference answer, so the command prints what 
 
 ## The eval set
 
-- 20 tasks in [tau2-bench](https://github.com/sierra-research/tau2-bench)'s task schema. The format
+- 21 tasks in [tau2-bench](https://github.com/sierra-research/tau2-bench)'s task schema. The format
   is tau2's; the tasks and data are written for this repo and are synthetic.
-- A `never_events` split (9 tasks) of forbidden actions, plus `base` (all 20) and `cross_flow`.
+- A `never_events` split (10 tasks) of forbidden actions, plus `base` (all 21) and `cross_flow`.
 - Each task is labelled with its flow, expected disposition and whether a person must be involved.
 
 Details are in [`db/README.md`](db/README.md) and section 2 of the

@@ -5,9 +5,9 @@ import pytest
 from evals.ar_tasks import TASKS_PATH, TaskFileError, load_splits, load_tasks
 
 
-def test_loads_the_twenty_tasks_typed():
+def test_loads_the_twenty_one_tasks_typed():
     tasks = load_tasks()
-    assert [t.id for t in tasks] == [f'task_{n:02d}' for n in range(1, 21)]
+    assert [t.id for t in tasks] == [f'task_{n:02d}' for n in range(1, 22)]
     chat = {t.id for t in tasks if t.user_scenario is not None}
     assert chat == {'task_02', 'task_08'}
     by_id = {t.id: t for t in tasks}
@@ -26,9 +26,9 @@ def test_tasks_are_frozen():
 
 def test_loads_the_splits():
     splits = load_splits()
-    assert len(splits['base']) == 20
+    assert len(splits['base']) == 21
     assert splits['never_events'] == ('task_03', 'task_07', 'task_10', 'task_11', 'task_12', 'task_14', 'task_15',
-                                      'task_16', 'task_20')
+                                      'task_16', 'task_20', 'task_21')
 
 
 def _write(tmp_path, content):

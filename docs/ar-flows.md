@@ -15,7 +15,7 @@ with its capability, which the agent loads before it decides what the event need
 
 | Trigger | What starts it | Flow | Tasks |
 |---|---|---|---|
-| `aging_check` | An account is due for a check of what is overdue (an aging timer) | Collect | 1, 3, 11, 12, 13, 17, 18 |
+| `aging_check` | An account is due for a check of what is overdue (an aging timer) | Collect | 1, 3, 11, 12, 13, 17, 18, 21 |
 | `payment_received` | A payment lands; the ticket names the `payment_id` | Apply cash | 4, 5, 6, 7, 15, 16 |
 | `dispute_review` | An open dispute comes up for review; the ticket names the `dispute_id` | Resolve a dispute | 9, 10, 14 |
 | `approval_decided` | A person has decided a pending approval; the ticket names the `approval_id` | Finish after a decision | 19, 20 |
@@ -41,6 +41,7 @@ may be chased. The body must state the amount `amount_due` returns for those inv
 | The only contact is do-not-contact | No reminder; `escalate_to_human` | No message; a person has the account | 3 |
 | A $600.00 credit applied since the last reminder; a note and that reminder still say $10,000.00 | `send_message` with the amount from `amount_due` | Reminder for the net $9,400.00 | 11 |
 | Two overdue invoices, one under an open dispute | `send_message` for the undisputed one only | Reminder for $7,250.00; the disputed invoice stays paused | 12 |
+| The same two invoices after the dispute was rejected; the customer's complaint is still in the recent messages | `send_message` covering both | One reminder for $12,050.00; no new dispute; neither invoice paused | 21 |
 | An open promise whose date is still to come (13), or a reminder sent 3 days ago (17) | Nothing, and says why | No new message | 13, 17 |
 | Email is set to review for this customer | `send_message`; policy holds the draft (P5) | Nothing sent; one pending approval | 18 |
 

@@ -19,7 +19,8 @@
     "task_17",
     "task_18",
     "task_19",
-    "task_20"
+    "task_20",
+    "task_21"
   ],
   "never_events": [
     "task_03",
@@ -30,7 +31,8 @@
     "task_14",
     "task_15",
     "task_16",
-    "task_20"
+    "task_20",
+    "task_21"
   ],
   "cross_flow": [
     "task_06",

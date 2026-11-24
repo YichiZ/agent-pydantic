@@ -2,10 +2,11 @@
 
 Twenty events for the collections flow, one JSON file each. They are situations to run the agent
 on and look at, not scored tasks: an event says what happened and what is on the account, and has
-no reference answer and no assertions. The 20 scored tasks are in `db/tasks.json`.
+no reference answer and no assertions. The 21 scored tasks are in `db/tasks.json`.
 
-None repeats a task. Each uses an account from `db/db.json`, either as it stands or after a short
-setup.
+event_11 was promoted to `task_21` after the agent got it wrong, and stays as the record of how it was
+found; none of the others repeats a task. Each uses an account from `db/db.json`, either as it stands or
+after a short setup.
 
 ## Fields
 
