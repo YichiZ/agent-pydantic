@@ -267,25 +267,10 @@ def _p8_one_candidate(db: ArDb, payment_id: str) -> Decision:
                                 f'{len(candidates)} open invoices ({", ".join(candidates)}); a person must choose.')
 
 
-# Disputes and credits: P11, P1 (pausing), P9, P10.
+# Disputes and credits: P11, P9, P10.
 
 def check_open_dispute(db: ArDb, customer_id: str, *, invoice_id: str) -> Decision:
     return check_scope(db, customer_id, db.invoice(invoice_id).customer_id, f'Invoice {invoice_id}')
-
-
-def check_pause_collections(db: ArDb, customer_id: str, *, invoice_id: str) -> Decision:
-    return first_failure((
-        check_scope(db, customer_id, db.invoice(invoice_id).customer_id, f'Invoice {invoice_id}'),
-        _p1_disputed(db, invoice_id),
-    ))
-
-
-def _p1_disputed(db: ArDb, invoice_id: str) -> Decision:
-    """P1: collections pause only while a dispute is open, and opening the dispute is what pauses them."""
-    if has_open_dispute(db, invoice_id):
-        return ALLOW
-    return deny('P1', f'{invoice_id} has no open dispute, and collections pause only while one is open. If the '
-                      'customer contests it, open a dispute for the contested amount: that pauses collections.')
 
 
 def has_open_dispute(db: ArDb, invoice_id: str) -> bool:

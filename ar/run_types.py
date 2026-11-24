@@ -10,7 +10,7 @@ from typing import Any, Literal, Protocol
 
 from ar.store import Store
 
-PolicyKind = Literal['solo', 'chat']  # which rulebook: db/policy_solo.md or db/policy.md
+PolicyKind = Literal['solo', 'chat']  # 'chat' adds db/policy/chat.md to the base rules
 Retrieval = Literal['none', 'golden', 'search']
 
 

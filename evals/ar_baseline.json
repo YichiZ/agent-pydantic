@@ -79,10 +79,10 @@
   },
   "retrieval_pass_1": 1.0,
   "efficiency": {
-    "cost_usd": 0.097497,
-    "seconds": 6.971,
-    "tool_calls": 3.95
+    "cost_usd": 0.085478,
+    "seconds": 6.379,
+    "tool_calls": 4.15
   },
-  "tone": 1.0,
+  "tone": 0.9938,
   "tone_trials": 16
 }

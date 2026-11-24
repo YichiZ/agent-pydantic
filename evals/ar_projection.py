@@ -22,7 +22,7 @@ FREE_TEXT: tuple[tuple[str, ...], ...] = (
     ('disputes', 'claim'),  # open_dispute: the customer's claim as the agent put it
     ('disputes', 'resolution'),  # reject_dispute's reason, or propose_credit's "Credit ... applied: <reason>"
     ('credits', 'reason'),  # propose_credit: why, in the agent's words
-    ('approvals', 'reason'),  # the policy's sentence, or request_approval's reason
+    ('approvals', 'reason'),  # the policy's sentence
     ('approvals', 'note'),  # decide_approval: the reviewer's note (set by the environment only)
     ('approvals', 'payload', 'body'),  # send_message held under P5: the draft's wording
 )

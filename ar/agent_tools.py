@@ -1,5 +1,6 @@
-"""The agent's 17 tools: thin wrappers over the plain tools in `ar.environment.TOOLS`, grouped as in the plan's
-Piece F table. The base tools are always offered; the rest come in capabilities the model loads on demand.
+"""The agent's 15 tools: thin wrappers over the plain tools in `ar.environment.TOOLS`, grouped as in the plan's
+Piece F table. The base tools are always offered; the rest come in capabilities the model loads on demand,
+each with its flow's rules from `db/policy/`.
 
 A wrapper passes the run's store and customer id. A refused call (a policy denial, a bad argument, an unknown id)
 comes back to the model as a retry carrying the reason; a write held for a person is a normal result.
@@ -9,6 +10,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
 from pydantic_ai import Capability, ModelRetry, RunContext, Tool
@@ -105,18 +107,6 @@ def search_knowledge(ctx: RunContext[AgentDeps], query: str) -> Json:
 
 # Write tools always offered.
 
-def request_approval(ctx: RunContext[AgentDeps], action: str, payload: dict[str, Any], reason: str) -> WriteResult:
-    """Ask a person to decide a case no rule covers; writes one pending approval. Never use it for a write a rule
-    already holds (a message on a review channel, an ambiguous payment, a credit over the limit): make that write.
-
-    Args:
-        action: Short name of the action you want decided.
-        payload: The facts the reviewer needs, as a JSON object.
-        reason: Why a person must decide.
-    """
-    return _call(ctx, tools_write.request_approval, action=action, payload=payload, reason=reason)
-
-
 def execute_approval(ctx: RunContext[AgentDeps], approval_id: str) -> WriteResult:
     """Carry out an approval a person has approved, once: an approved credit is applied, an approved draft is sent.
     Refused for an approval that is pending, rejected or already carried out.
@@ -195,17 +185,6 @@ def open_dispute(ctx: RunContext[AgentDeps], invoice_id: str, category: DisputeC
                  claim=claim)
 
 
-def pause_collections(ctx: RunContext[AgentDeps], invoice_id: str, reason: str) -> WriteResult:
-    """Opening a dispute is what pauses collections; use open_dispute for a contested invoice. This changes nothing on
-    an invoice with an open dispute (it is already paused) and is refused on one without.
-
-    Args:
-        invoice_id: The invoice to pause, e.g. "INV-0000".
-        reason: Why collections should stop.
-    """
-    return _call(ctx, tools_disputes.pause_collections, invoice_id=invoice_id, reason=reason)
-
-
 def propose_credit(ctx: RunContext[AgentDeps], dispute_id: str, amount: Decimal, reason: str) -> WriteResult:
     """Credit an open dispute the evidence supports. At or under the auto-approve limit it is applied and the dispute
     resolved; above it the credit is held for a person.
@@ -231,19 +210,28 @@ def reject_dispute(ctx: RunContext[AgentDeps], dispute_id: str, reason: str) -> 
 
 WRAPPERS: Sequence[Callable[..., Any]] = (
     get_account_state, list_open_invoices, get_invoice, get_payment, get_remittance, amount_due, search_knowledge,
-    request_approval, execute_approval, escalate_to_human, send_message, log_promise, apply_payment, open_dispute,
-    pause_collections, propose_credit, reject_dispute,
+    execute_approval, escalate_to_human, send_message, log_promise, apply_payment, open_dispute, propose_credit,
+    reject_dispute,
 )
 
 CAPABILITY_CATALOG: dict[CapabilityName, tuple[str, str]] = {  # capability in TOOLS -> (capability id, catalog line)
-    'collections': ('collections', 'Payment reminders and promises to pay: send_message, log_promise. '
-                                   'Load for an aging check or a customer who promises to pay.'),
-    'cash_application': ('cash-application', 'Applying received payments to invoices: apply_payment. '
-                                             'Load for a payment received.'),
-    'disputes': ('disputes', 'Disputes, deductions and credits: open_dispute, pause_collections, propose_credit, '
-                             'reject_dispute. Load for a short payment, a contested invoice, a dispute review or a '
-                             "reviewer's decision on a credit."),
+    'collections': ('collections', 'Rules and tools for payment reminders and promises to pay (send_message, '
+                                   'log_promise). Load for an aging check, or when a customer promises to pay, '
+                                   'in a chat too.'),
+    'cash_application': ('cash-application', 'Rules and tools for applying a received payment to invoices '
+                                             '(apply_payment). Load for a payment received, a short payment '
+                                             'included; its rules say when disputes is needed as well.'),
+    'disputes': ('disputes', 'Rules and tools for disputes, deductions and credits (open_dispute, propose_credit, '
+                             'reject_dispute). Load for a dispute review, a reviewer\'s decision on a credit, a '
+                             'customer who contests a charge (in a chat too), or a deduction taken in a short '
+                             'payment.'),
 }
+RULES_DIR = Path(__file__).resolve().parent.parent / 'db' / 'policy'
+
+
+def rules(name: str) -> str:
+    """One file of the rulebook in `db/policy/`: 'base', 'chat', or a capability's own rules."""
+    return (RULES_DIR / f'{name}.md').read_text()
 
 
 def _offer_search(ctx: RunContext[AgentDeps], tool_def: ToolDefinition) -> ToolDefinition | None:
@@ -251,12 +239,12 @@ def _offer_search(ctx: RunContext[AgentDeps], tool_def: ToolDefinition) -> ToolD
 
 
 def _tools(capability: CapabilityName) -> list[Tool[AgentDeps]]:
-    # TOOLS[...] raises at import if a wrapper's name is not one of the 17 tools.
+    # TOOLS[...] raises at import if a wrapper's name is not one of the 15 tools.
     return [Tool(wrapper, prepare=_offer_search if wrapper is search_knowledge else None)
             for wrapper in WRAPPERS if TOOLS[wrapper.__name__].capability == capability]
 
 
 BASE_TOOLS = _tools('base')
 CAPABILITIES = [Capability[AgentDeps](id=capability_id, description=description, defer_loading=True,
-                                      tools=_tools(name))
+                                      instructions=rules(name), tools=_tools(name))
                 for name, (capability_id, description) in CAPABILITY_CATALOG.items()]

@@ -22,8 +22,6 @@ TOOLS = {
     'propose_credit': {'dispute_id', 'amount', 'reason'},
     'reject_dispute': {'dispute_id', 'reason'},
     'log_promise': {'invoice_id', 'promised_date', 'amount'},
-    'pause_collections': {'invoice_id', 'reason'},
-    'request_approval': {'action', 'payload', 'reason'},
     'execute_approval': {'approval_id'},
     'escalate_to_human': {'reason'},
 }
