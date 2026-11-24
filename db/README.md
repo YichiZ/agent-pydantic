@@ -10,19 +10,19 @@ It uses the table format of tau2-bench's `banking_knowledge` domain: each table 
 | Table | Rows | What it holds |
 |---|---|---|
 | `tenants` | 1 | "today" (`as_of_date`, 2026-11-16), the credit limit that needs approval, reminder spacing |
-| `customers` | 13 | one parent and child pair (Delmar Foods), autonomy per channel |
-| `contacts` | 14 | one is do-not-contact |
-| `invoices` | 20 | 2 paid, 18 open; one line each, so `amount = quantity × unit_price` |
-| `payments` | 6 | 2 applied, 4 landed today and unapplied |
-| `remittances` | 3 | one exact, one across three invoices and two entities, one short-pay with a deduction code |
+| `customers` | 18 | one parent and child pair (Delmar Foods), autonomy per channel; one has email on review |
+| `contacts` | 19 | one is do-not-contact |
+| `invoices` | 26 | 2 paid, 24 open; one line each, so `amount = quantity × unit_price` |
+| `payments` | 7 | 2 applied, 5 landed today and unapplied |
+| `remittances` | 4 | one exact, one across three invoices and two entities, one short-pay with a deduction code, one with an instruction aimed at an AI system hidden in its text |
 | `applications` | 2 | payment to invoice |
 | `credits` | 1 | applied the day before "today" |
-| `disputes` | 4 | 3 open, 1 resolved |
-| `promises` | 0 | filled by the agent |
-| `messages` | 6 | 2 outbound reminders, 4 inbound claims |
-| `approvals` | 0 | filled by the agent |
+| `disputes` | 5 | 4 open, 1 resolved |
+| `promises` | 1 | one open promise, not yet due; more are filled by the agent |
+| `messages` | 10 | 4 outbound reminders, 5 inbound claims, 1 inbound promise to pay |
+| `approvals` | 1 | one historical approval, already carried out; the agent adds more |
 | `customer_notes` | 6 | long-term memory; one note is deliberately stale |
-| `action_log` | 9 | every earlier write, with its reason |
+| `action_log` | 13 | every earlier write, with its reason |
 
 Rules the data obeys:
 
@@ -37,3 +37,20 @@ plainly not actionable, such as an invoice that is not yet due. An agent run act
 so a second piece of real work on the same account would make a correct run look wrong. The one
 exception is Fennick, whose dispute is used at three moments by three tasks. The task list is in
 `docs/ar-coworker-implementation.md`.
+
+## The eval set
+
+| File | What it holds |
+|---|---|
+| `tasks.json` | 20 tasks in tau2-bench's task schema, one reference path and env assertions each |
+| `split_tasks.json` | `base` (all 20), `never_events`, `cross_skill` |
+| `policy_solo.md` | the rules the agent reads on ticket (event) tasks |
+| `policy.md` | the same rules, plus how to talk to a customer, for the two chat tasks |
+| `documents/` | nine knowledge documents: evidence, agreements, policies and one distractor |
+
+A new row's id is its table prefix plus the largest numeric suffix in that table plus one, so a
+run on a fresh copy of the database creates `apr_8001`, `crd_4002`, `dsp_3006`, `msg_6011`,
+`prm_8502` and `app_5002` first. `tests/test_eval_set.py` checks the set offline.
+
+`assert_no_credit_without_approval` holds on the untouched database: the one historical credit
+above the limit, `crd_4001` (600.00), has an approved approval, `apr_8000`.
