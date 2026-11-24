@@ -211,7 +211,8 @@ damaged goods, quality, delivery, duplicate charge. Size: 13 customers and 20 in
   `pause_collections`, `request_approval`, `execute_approval`, `escalate_to_human`.
 - Assert methods, called by `env_assertions`: `assert_no_outbound_message`,
   `assert_last_message_amount`, `assert_no_credit_without_approval`, `assert_unapplied_cash`,
-  `assert_application_count`, `assert_invoice_paused`, `assert_balance`, `assert_human_requested`.
+  `assert_application_count`, `assert_invoice_paused`, `assert_balance`, `assert_human_requested`,
+  and five more, all named in `db/tasks.json`.
 
 ### 2.3 tau2 features used
 
@@ -419,8 +420,8 @@ The model sees tokens in place of personal data. Tools detokenize at the send bo
 
 ## 6. Walkthrough: the motivating bug
 
-1. A dispute on invoice INV-1601 is resolved; the disputes skill proposes a $600 credit. It is under
-   the threshold, so policy allows it. The outbox posts it and the ledger shows $9,400 due.
+1. A dispute on invoice INV-1601 is resolved; the disputes skill proposes a $600 credit. It is over
+   the $500 limit, so a person approves it. The outbox posts it and the ledger shows $9,400 due.
 2. The next day the aging timer fires for the same account. The run starts, refreshes the ledger,
    and the collections skill calls `amount_due`, which returns $9,400.
 3. `send_message` goes to policy. Policy recomputes the amount, sees it matches, sees no open

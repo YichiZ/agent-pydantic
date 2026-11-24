@@ -1,0 +1,5 @@
+{
+  "id": "doc_collections_contact_policy",
+  "title": "Collections contact policy",
+  "content": "Reminders go only to invoices past their due date. Each reminder names the invoice, the amount now due and the due date, and asks when payment can be expected.\nAt least 7 days between reminders to the same customer.\nNo reminder on an invoice with an open dispute, or with an open promise to pay whose date has not passed.\nA contact marked do-not-contact is never contacted, on any channel. If no contact on an account may be reached, the account goes to the AR lead.\nWhere a customer's channel is set to review, a person approves each message before it is sent.\nMessages are polite and factual and never threaten."
+}

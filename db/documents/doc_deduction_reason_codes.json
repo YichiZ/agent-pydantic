@@ -1,0 +1,5 @@
+{
+  "id": "doc_deduction_reason_codes",
+  "title": "Customer deduction reason codes",
+  "content": "Codes customers put on a remittance when they pay less than an invoice. Each code maps to one dispute category. When a payment carries a deduction, apply what was paid and open a dispute for the deducted amount under the mapped category.\nTPR-01: trade_promotion. Promotional allowance or co-op advertising the customer believes it is owed.\nPRC-01: pricing_variance. Invoiced above the customer's agreed price.\nFRT-01: freight. A freight charge the customer says it should not pay.\nFRT-02: freight. Penalty the customer takes when a delivery arrives after the promised date.\nSHT-01: shortage. Fewer units received than invoiced.\nDMG-01: damaged_goods. Goods arrived damaged.\nQLT-01: quality. Goods arrived intact but are defective or not to specification.\nDLV-01: delivery. Delivered to the wrong site or the wrong recipient.\nDUP-01: duplicate_charge. The same goods or service invoiced twice."
+}

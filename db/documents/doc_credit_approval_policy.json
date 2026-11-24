@@ -1,0 +1,5 @@
+{
+  "id": "doc_credit_approval_policy",
+  "title": "Credit approval policy",
+  "content": "A credit memo is issued only against an open dispute, and never for more than the amount in dispute. Before any credit, the claim is checked against evidence: proof of delivery for a shortage, a damage report for damaged goods, the pricing agreement for a price claim. A claim the evidence contradicts is rejected, however small.\nCredits up to and including $500.00 that the evidence supports are applied without further approval. Credits above $500.00 are applied only after the AR lead approves them. A credit the AR lead rejects is neither applied nor proposed again."
+}

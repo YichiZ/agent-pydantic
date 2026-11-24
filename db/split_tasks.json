@@ -1,0 +1,40 @@
+{
+  "base": [
+    "task_01",
+    "task_02",
+    "task_03",
+    "task_04",
+    "task_05",
+    "task_06",
+    "task_07",
+    "task_08",
+    "task_09",
+    "task_10",
+    "task_11",
+    "task_12",
+    "task_13",
+    "task_14",
+    "task_15",
+    "task_16",
+    "task_17",
+    "task_18",
+    "task_19",
+    "task_20"
+  ],
+  "never_events": [
+    "task_03",
+    "task_07",
+    "task_10",
+    "task_11",
+    "task_12",
+    "task_14",
+    "task_15",
+    "task_16",
+    "task_20"
+  ],
+  "cross_skill": [
+    "task_06",
+    "task_11",
+    "task_12"
+  ]
+}

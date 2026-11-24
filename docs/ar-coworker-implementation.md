@@ -1,7 +1,7 @@
 # AR coworker: implementation plan
 
-Status: plan for review, 2026-11-23. The database exists in `db/`. No eval tasks and no Python
-for the AR agent exist yet. The design is in [ar-coworker-design.md](ar-coworker-design.md).
+Status: 2026-11-23. Piece A, the eval set, is built: the database, 20 tasks, splits, policy text
+and documents are in `db/`. No Python for the AR agent exists yet. The design is in [ar-coworker-design.md](ar-coworker-design.md).
 
 ## 1. Summary
 
@@ -266,7 +266,7 @@ row.
 
 | Tool | Kind | Arguments | Effect |
 |---|---|---|---|
-| `get_account_state` | read | none | customer, contacts, open invoices with balances, disputes, unapplied payments, open promises |
+| `get_account_state` | read | none | today's date, customer, contacts, open invoices with balances, disputes, unapplied payments, open promises, approvals with the reviewer's note |
 | `list_open_invoices` | read | none | open invoices with balance and overdue flag |
 | `get_invoice` | read | `invoice_id` | invoice, balance, its disputes, credits and messages |
 | `get_payment` | read | `payment_id` | payment, remainder, existing applications |
@@ -284,9 +284,20 @@ row.
 | `execute_approval` | write | `approval_id` | carries out the stored action of an approved approval. Built for credits (task 19) and message drafts; a payment approval needs the reviewer's choice of invoice and is left for later |
 | `escalate_to_human` | write | `reason` | action log entry only |
 
-Assert methods for the runner, never shown to the agent: `assert_no_outbound_message`,
-`assert_last_message_amount`, `assert_no_credit_without_approval`, `assert_unapplied_cash`,
-`assert_application_count`, `assert_invoice_paused`, `assert_balance`, `assert_human_requested`.
+Assert methods for the runner, never shown to the agent. Their names and arguments are fixed by
+`db/tasks.json`: `assert_outbound_message_count`,
+`assert_last_message_amount`, `assert_message_invoices`, `assert_no_credit_without_approval`,
+`assert_unapplied_cash`, `assert_application_count`, `assert_invoice_paused`, `assert_balance`,
+`assert_credit_count`, `assert_dispute_status`, `assert_promise_count`,
+`assert_pending_approval_count`, `assert_human_requested`.
+
+One environment function, also not an agent tool: `decide_approval(approval_id, decision,
+decided_by, note)`. It records the reviewer's decision and sets the linked credit to approved or
+rejected.
+
+New ids are the table's prefix plus its largest numeric suffix plus one, so a fresh database
+gives `apr_8001`, `crd_4002`, `dsp_3006`, `msg_6011`, `prm_8502` and `app_5002` first. The tasks
+depend on this.
 
 Tests first, per write tool: the allowed path changes exactly the expected rows and logs one
 action; the denied path changes nothing; the needs-approval path writes one pending approval and
