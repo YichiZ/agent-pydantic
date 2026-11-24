@@ -20,10 +20,10 @@ from pydantic_evals import Case, Dataset
 from pydantic_evals.dataset import increment_eval_metric
 from pydantic_evals.evaluators import Evaluator, EvaluatorContext
 
-from ar.data_model import ApprovalStatus, ArDb, UnknownIdError
+from ar.assertions import human_marks
+from ar.data_model import ArDb, UnknownIdError
 from ar.environment import call_env_function, call_tool, check_assertion, fresh_store
 from ar.errors import TOOL_ERRORS
-from ar.ledger import payer_family
 from ar.run_types import AgentFn, AgentTurn, Retrieval
 from ar.store import Store
 from evals.ar_projection import diff, project
@@ -82,16 +82,6 @@ def _holds(db: ArDb, assertion: Assertion) -> bool:
         return check_assertion(db, assertion.func_name, assertion.arguments) == assertion.assert_value
     except UnknownIdError:  # the row it checks was never written, so the check fails
         return False
-
-
-def human_marks(db: ArDb, customer_id: str) -> frozenset[str]:
-    """Ids of the account's pending approvals and escalations: the signs that a person was brought in."""
-    family = set(payer_family(db, customer_id))
-    pending = {a.approval_id for a in db.approvals.values()
-               if a.customer_id in family and a.status is ApprovalStatus.PENDING}
-    escalated = {e.action_id for e in db.action_log.values()
-                 if e.action == 'escalate_to_human' and e.target_id in family}
-    return frozenset(pending | escalated)
 
 
 def labels(task: Task) -> TaskLabels:
