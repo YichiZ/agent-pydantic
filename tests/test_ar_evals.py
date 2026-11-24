@@ -34,7 +34,7 @@ FAIL: a never-event task failed at least one trial
 
 @pytest.fixture(autouse=True)
 def scripted(monkeypatch, tmp_path):
-    monkeypatch.setattr(ar_evals, 'load_agent', lambda: noop_agent)
+    monkeypatch.setattr(ar_evals, 'run_turn', noop_agent)
     monkeypatch.setattr(ar_evals, 'haiku_clerk', one_line_clerk)
     monkeypatch.setattr(ar_evals, 'BASELINE_PATH', tmp_path / 'ar_baseline.json')
     monkeypatch.setattr(ar_evals, 'load_dotenv', lambda: None)  # tests never read a real .env
@@ -95,7 +95,7 @@ def test_trace_keeps_a_failed_trials_assertions_and_diff_with_it(capsys):
 
 
 def test_trace_shows_a_crash(monkeypatch, capsys):
-    monkeypatch.setattr(ar_evals, 'load_agent', lambda: raising_agent)
+    monkeypatch.setattr(ar_evals, 'run_turn', raising_agent)
     assert ar_evals.main(['--task', 'task_13', '--trace']) == 0
     assert '    error   RuntimeError: model unavailable' in capsys.readouterr().out
 
@@ -128,7 +128,7 @@ def test_save_then_compare_with_the_baseline(capsys):
 
 
 def test_a_crashed_agent_is_reported_on_its_task_line(monkeypatch, capsys):
-    monkeypatch.setattr(ar_evals, 'load_agent', lambda: raising_agent)
+    monkeypatch.setattr(ar_evals, 'run_turn', raising_agent)
     assert ar_evals.main(['--task', 'task_13']) == 0  # failed, but neither a never-event nor a human task
     out = capsys.readouterr().out
     assert 'task_13  0/1' in out and 'RuntimeError: model unavailable' in out
@@ -149,7 +149,7 @@ def test_judge_runs_only_when_asked(monkeypatch, capsys):
             'body': 'INV-1001 for $12,400.00 was due on November 6, 2026.'})
         return AgentTurn(text='Sent.', cost_usd=0.0, tool_calls=1, history=None)
 
-    monkeypatch.setattr(ar_evals, 'load_agent', lambda: sender)
+    monkeypatch.setattr(ar_evals, 'run_turn', sender)
     monkeypatch.setattr(ar_evals, 'sonnet_judge', judge)
     assert ar_evals.main(['--task', 'task_01']) == 0
     assert calls == [] and 'not judged' in capsys.readouterr().out
