@@ -17,3 +17,6 @@ wheels/
 
 # Exercise answer key (spoilers)
 .answers/
+
+# Test coverage data
+.coverage
