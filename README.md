@@ -8,25 +8,42 @@ The eval set is built first and is the specification for the agent that follows.
 
 ## Status
 
-The eval set, the data layer, the policy rules and the tools exist. There is no agent to run yet.
+The agent and its eval runner work end to end. The full eval run and a saved baseline are next.
 
 - Done: [design](docs/ar-coworker-design.md), [implementation plan](docs/ar-coworker-implementation.md),
   synthetic AR database, eval set of 20 tasks, data model and ledger, 13 policy rules, 17 tools,
-  and an offline replay of every task's reference actions through the real tools.
-- Not built yet: the eval runner and the agent.
+  the agent (one Pydantic AI orchestrator on Opus 5.5 with three skills loaded on demand), and the
+  eval runner.
+- Checked live: three tasks (a cash application, a credit held for approval, a chat) pass on a
+  real model.
+- Not done yet: a run of all 20 tasks over several trials, and a baseline to compare against.
 
 ## Setup
 
 Needs [uv](https://docs.astral.sh/uv/) and Python 3.13. `uv run` creates the environment on first use.
 
-A `.env` with `ANTHROPIC_API_KEY` is only needed later, for live agent runs. Nothing today calls a model.
+A `.env` with `ANTHROPIC_API_KEY` is needed only for live runs. The tests do not call a model.
 
 ## Run
 
 ```bash
-uv run pytest             # offline tests
-uv run pytest --cov=ar    # with coverage of the ar/ package
+uv run pytest             # offline tests, no API key
+uv run pytest --cov=ar --cov=evals
 ```
+
+These call a real model and need `ANTHROPIC_API_KEY` in `.env`:
+
+```bash
+uv run python -m evals.ar_evals                        # all 20 tasks, one trial; prints the grid
+uv run python -m evals.ar_evals --trials 4             # pass^4
+uv run python -m evals.ar_evals --split never_events
+uv run python -m evals.ar_evals --task task_04 task_10
+uv run python -m evals.ar_evals --retrieval golden     # none | golden | search
+uv run python -m evals.ar_evals --judge                # also score tone, on Sonnet
+uv run pytest -m e2e                                   # two live agent tests
+```
+
+One task costs about $0.10 on Opus 5.5.
 
 ## The eval set
 
@@ -43,6 +60,6 @@ Details are in [`db/README.md`](db/README.md) and section 2 of the
 
 - `docs/`: design, its diagram, the implementation plan, and a walk-through of one event
 - `db/`: database, tasks, splits, policy text and knowledge documents
-- `ar/`: data model, ledger, policy rules, tools, and the assertions the evals use
-- `evals/scoreboard.py`: pass rate, cost and latency against a baseline
+- `ar/`: data model, ledger, policy rules, tools, the agent, and the assertions the evals use
+- `evals/`: the eval runner (`ar_evals.py` is the command), scoring, the simulated clerk and the tone judge
 - `tests/`: offline tests
