@@ -2,7 +2,8 @@
 
 The projection is `ArDb.dump()` without the action log and without the free text a tool stores in
 the agent's own words. Ids, amounts, statuses, invoice ids and dates are kept: the tools make ids
-from each table's sequence and dates from `as_of_date`, so they do not vary between correct runs.
+from each table's sequence and dates from `as_of_date`, so they do not vary between correct runs,
+except where one run may write several rows of a table in any order (see `NATURAL_KEYS`).
 """
 
 from collections.abc import Mapping
@@ -27,6 +28,11 @@ FREE_TEXT: tuple[tuple[str, ...], ...] = (
 )
 
 
+# table -> (natural key, generated id). A payment's lines may be applied in any order, and generated ids
+# follow the order of the calls, so applications are compared by payment and invoice, not by id.
+NATURAL_KEYS: dict[str, tuple[str, str]] = {'applications': ('idempotency_key', 'application_id')}
+
+
 @dataclass(frozen=True)
 class TableDiff:
     """How the ACTUAL rows of one table differ from TARGET's: ids only in ACTUAL, only in TARGET, or in both."""
@@ -38,8 +44,17 @@ class TableDiff:
 
 
 def project(db: ArDb) -> Projection:
-    return {name: {row_id: _strip_row(name, row) for row_id, row in rows.items()}
+    return {name: _rekey(name, {row_id: _strip_row(name, row) for row_id, row in rows.items()})
             for name, rows in db.dump().items() if name not in IGNORED_TABLES}
+
+
+def _rekey(table: str, rows: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Key a table by its natural key, dropping the generated id, where the order of writes is free."""
+    natural = NATURAL_KEYS.get(table)
+    if natural is None:
+        return rows
+    key_field, id_field = natural
+    return {row[key_field]: {k: v for k, v in row.items() if k != id_field} for row in rows.values()}
 
 
 def diff(target: Projection, actual: Projection) -> tuple[TableDiff, ...]:

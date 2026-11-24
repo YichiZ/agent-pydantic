@@ -8,15 +8,17 @@ The eval set is built first and is the specification for the agent that follows.
 
 ## Status
 
-The agent and its eval runner work end to end. The full eval run and a saved baseline are next.
+The agent, the eval runner and a saved baseline exist.
 
-- Done: [design](docs/ar-coworker-design.md), [implementation plan](docs/ar-coworker-implementation.md),
+- Built: [design](docs/ar-coworker-design.md), [implementation plan](docs/ar-coworker-implementation.md),
   synthetic AR database, eval set of 20 tasks, data model and ledger, 13 policy rules, 17 tools,
   the agent (one Pydantic AI orchestrator on Opus 5.5 with three skills loaded on demand), and the
   eval runner.
-- Checked live: three tasks (a cash application, a credit held for approval, a chat) pass on a
-  real model.
-- Not done yet: a run of all 20 tasks over several trials, and a baseline to compare against.
+- Baseline (`evals/ar_baseline.json`): all 20 tasks pass on each of 4 trials, 80 runs in all, at
+  about $0.10 and 7 seconds per run.
+- What that does and does not show: the agent follows the rulebook reliably on these scenarios. A
+  perfect score also means the set no longer separates a good agent from a better one. Harder
+  tasks are the next step; see "not covered yet" in [the flows page](docs/ar-flows.md).
 
 ## Setup
 

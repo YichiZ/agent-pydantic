@@ -65,14 +65,14 @@ def test_a_wrong_amount_does_not_compare_equal():
     wrong = Action(action_id='04_x', requestor='assistant', name='apply_payment',
                    arguments={'payment_id': 'pay_2001', 'invoice_id': 'INV-1301', 'amount': '14000.00'})
     changes = diff(project(target(task)), project(target(with_actions(task, [wrong]))))
-    assert TableDiff(table='applications', changed=('app_5002 (amount)',)) in changes
+    assert TableDiff(table='applications', changed=('pay_2001:INV-1301 (amount)',)) in changes
 
 
 def test_a_missing_row_does_not_compare_equal():
     task = TASKS['task_05']
     short = with_actions(task, list(task.evaluation_criteria.actions[:2]))
     changes = {d.table: d for d in diff(project(target(task)), project(target(short)))}
-    assert changes['applications'].removed == ('app_5004',)
+    assert changes['applications'].removed == ('pay_2002:INV-1304',)
     assert changes['applications'].added == ()
 
 
@@ -97,3 +97,11 @@ def test_the_draft_body_inside_an_approval_payload_is_left_out_but_the_rest_is_k
     assert 'body' not in payload
     assert payload['invoice_ids'] == ['INV-2201'] and payload['contact_id'] == 'con_819'
     assert 'reason' not in projected['approvals']['apr_8001']
+
+
+def test_the_order_of_applications_does_not_matter():
+    """Found on the first live run: the agent applied task 5's three lines in another order and was marked wrong."""
+    task = TASKS['task_05']
+    backwards = with_actions(task, list(reversed(task.evaluation_criteria.actions)))
+    assert diff(project(target(task)), project(target(backwards))) == ()
+
