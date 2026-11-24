@@ -20,16 +20,17 @@ from ar.data_model import (
     AutonomyLevel,
     Channel,
     Contact,
+    CreditApproval,
     CreditStatus,
     Dispute,
     DisputeStatus,
     InvoiceStatus,
     MessageDirection,
+    MessageDraft,
     PromiseStatus,
     Remittance,
 )
 from ar.ledger import ZERO, amount_due, applied_credits, balance, is_overdue, open_invoices, payer_family, unapplied
-from ar.payloads import CreditApproval, MessageDraft
 
 
 class Outcome(StrEnum):

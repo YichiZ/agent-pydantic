@@ -6,10 +6,9 @@ logs once; a denied write raises `PolicyDenied` and leaves the store as it was.
 
 from decimal import Decimal
 
-from ar.data_model import ArDb, Credit, CreditStatus, Dispute, DisputeCategory, DisputeStatus, next_id
+from ar.data_model import ArDb, Credit, CreditApproval, CreditStatus, Dispute, DisputeCategory, DisputeStatus, next_id
 from ar.errors import InvalidArgumentError
 from ar.ledger import balance
-from ar.payloads import CreditApproval
 from ar.policy import (
     Outcome,
     check_open_dispute,
