@@ -1,4 +1,5 @@
 """The --trace view of one trial: the conversation the agent had, in order, as labelled blocks for a terminal.
+`evals.run_event` prints the same view for an event.
 
 Pure functions from a `TrialResult` and its `TrialTrace` to `Line`s, drawn by `evals.trace_color.render`. A turn's
 history is read as pydantic-ai messages from the request that carries the turn's prompt: each response's reasoning,
@@ -61,10 +62,14 @@ def trace_lines(trace: TrialTrace, error: str | None = None, *, color: bool = Fa
     return render(_trace(trace, error), color)
 
 
+def totals(tool_calls: int, cost_usd: float, seconds: float) -> str:
+    """`3 tool calls  $0.0812  6.2s`"""
+    return f'{_count(tool_calls, "tool call")}  ${cost_usd:.4f}  {seconds:.1f}s'
+
+
 def _trial(number: int, result: TrialResult) -> Lines:
     verdict = 'PASS' if result.passed else 'FAIL'
-    head = (f'trial {number}  {verdict}  {_count(result.tool_calls, "tool call")}  ${result.cost_usd:.4f}  '
-            f'{result.seconds:.1f}s')
+    head = f'trial {number}  {verdict}  {totals(result.tool_calls, result.cost_usd, result.seconds)}'
     body = (*_trace(result.trace, result.error), *_optional('FAILED', result.failed_assertions),
             *_optional('DIFF', [diff_text(d) for d in result.diff]))
     return (Line(Kind.PLAIN, head, HEADER), *(replace(line, indent=line.indent + TRIAL) for line in body))
