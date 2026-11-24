@@ -12,8 +12,10 @@ Many trials run through a pydantic-evals `Dataset`: each case is one task, `repe
 import time
 from collections.abc import AsyncIterator, Iterable, Sequence
 from dataclasses import dataclass
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
+from pydantic_ai import capture_run_messages
+from pydantic_ai.messages import ModelMessage
 from pydantic_evals import Case, Dataset
 from pydantic_evals.dataset import increment_eval_metric
 from pydantic_evals.evaluators import Evaluator, EvaluatorContext
@@ -27,7 +29,7 @@ from ar.store import Store
 from evals.ar_projection import diff, project
 from evals.ar_tasks import DB_PATH, DOCUMENTS_DIR, Assertion, Task, UserScenario
 from evals.judge import JudgeFn, score_tone
-from evals.scoreboard import COST_METRIC, TaskLabels, TrialResult
+from evals.scoreboard import COST_METRIC, TaskLabels, TraceTurn, TrialResult, TrialTrace
 
 STOP = '###STOP###'  # the clerk ends the conversation by saying this
 DEFAULT_MAX_TURNS = 8  # agent turns in a chat
@@ -109,38 +111,65 @@ async def run_trial(task: Task, agent_fn: AgentFn, *, clerk: ClerkFn | None = No
     actual = initialize(task)
     start, customer_id = actual.db, task.annotations.customer_id
     began = time.perf_counter()
-    turns, error = await _act(task, actual, agent_fn, clerk, retrieval, max_turns)
+    acted = await _act(task, actual, agent_fn, clerk, retrieval, max_turns)
     seconds = time.perf_counter() - began
     tone, tone_error = await score_tone(judge, task.id, customer_id, start, actual.db) if judge else (None, None)
     changes, failed = diff(project(target.db), project(actual.db)), failed_assertions(actual.db, task)
+    turns, error = acted.turns, acted.error
     return TrialResult(
         task_id=task.id, labels=labels(task), passed=not changes and not failed and error is None,
         db_match=not changes, assertions_ok=not failed, failed_assertions=failed, diff=changes,
         brought_in_person=bool(human_marks(actual.db, customer_id) - human_marks(start, customer_id)),
         cost_usd=sum(t.cost_usd for t in turns), tool_calls=sum(t.tool_calls for t in turns), seconds=seconds,
         error=error, tone=tone, tone_error=tone_error,
+        trace=TrialTrace(chat=task.user_scenario is not None, turns=acted.traced,
+                         wrote=diff(start.dump(), actual.db.dump())),
     )
 
 
+@dataclass(frozen=True)
+class _Acted:
+    turns: tuple[AgentTurn, ...]  # the turns the agent finished: what is scored
+    traced: tuple[TraceTurn, ...]  # those turns, and the one it crashed on if it did: what --trace shows
+    error: str | None  # the agent's (or the clerk's) exception
+
+
+class _AgentCrashed(Exception):
+    """The agent raised `error` on `prompt`; `messages` is what its run had exchanged by then."""
+
+    def __init__(self, prompt: str, messages: Sequence[ModelMessage], error: Exception) -> None:
+        super().__init__(prompt)
+        self.prompt, self.messages, self.error = prompt, list(messages), error
+
+
 async def _act(task: Task, store: Store, agent_fn: AgentFn, clerk: ClerkFn | None, retrieval: Retrieval,
-               max_turns: int) -> tuple[tuple[AgentTurn, ...], str | None]:
-    """Run the agent on ACTUAL; the turns it finished, and its error if it (or the clerk) raised."""
-    turns: list[AgentTurn] = []
+               max_turns: int) -> _Acted:
+    """Run the agent on ACTUAL: the turns it finished, and its error if it (or the clerk) raised."""
+    finished: list[tuple[str, AgentTurn]] = []
     try:
-        async for turn in _turns(task, store, agent_fn, clerk, retrieval, max_turns):
-            turns.append(turn)
-    except Exception as error:  # whatever the agent under test raises is a failed trial, recorded, not a crashed run
-        return tuple(turns), f'{type(error).__name__}: {error}'
-    return tuple(turns), None
+        async for prompt, turn in _turns(task, store, agent_fn, clerk, retrieval, max_turns):
+            finished.append((prompt, turn))
+    except _AgentCrashed as crash:  # whatever the agent under test raises is a failed trial, recorded, not a crashed run
+        return _acted(finished, (TraceTurn(crash.prompt, crash.messages, reply=None),), crash.error)
+    except Exception as error:  # so is whatever the clerk raises
+        return _acted(finished, (), error)
+    return _acted(finished, (), None)
+
+
+def _acted(finished: Sequence[tuple[str, AgentTurn]], crashed: tuple[TraceTurn, ...], error: Exception | None) -> _Acted:
+    return _Acted(turns=tuple(turn for _, turn in finished),
+                  traced=(*(TraceTurn(prompt, turn.history, turn.text) for prompt, turn in finished), *crashed),
+                  error=None if error is None else f'{type(error).__name__}: {error}')
 
 
 async def _turns(task: Task, store: Store, agent_fn: AgentFn, clerk: ClerkFn | None, retrieval: Retrieval,
-                 max_turns: int) -> AsyncIterator[AgentTurn]:
+                 max_turns: int) -> AsyncIterator[tuple[str, AgentTurn]]:
+    """Each prompt the agent was given (the ticket, or the clerk's message) and the turn it took on it."""
     customer_id = task.annotations.customer_id
     golden = task.required_documents if retrieval == 'golden' else ()
     if task.ticket is not None:
-        yield await agent_fn(store, customer_id, task.ticket, policy='solo', retrieval=retrieval,
-                             golden_documents=golden)
+        yield task.ticket, await _agent_turn(agent_fn, store, customer_id, task.ticket, policy='solo',
+                                             retrieval=retrieval, golden_documents=golden)
         return
     assert clerk is not None and task.user_scenario is not None  # checked in run_trial and by Task
     transcript: Transcript = ()
@@ -150,10 +179,20 @@ async def _turns(task: Task, store: Store, agent_fn: AgentFn, clerk: ClerkFn | N
         transcript = (*transcript, ('clerk', said))
         if STOP in said:
             return
-        turn = await agent_fn(store, customer_id, said, policy='chat', retrieval=retrieval, golden_documents=golden,
-                              history=history)
+        turn = await _agent_turn(agent_fn, store, customer_id, said, policy='chat', retrieval=retrieval,
+                                 golden_documents=golden, history=history)
         history, transcript = turn.history, (*transcript, ('agent', turn.text))
-        yield turn
+        yield said, turn
+
+
+async def _agent_turn(agent_fn: AgentFn, store: Store, customer_id: str, prompt: str, **options: Any) -> AgentTurn:
+    """`agent_fn` on `prompt`. If it raises, `_AgentCrashed` keeps the messages a pydantic-ai run had exchanged by
+    then (none from a scripted agent), so the trace can show the calls up to the crash."""
+    with capture_run_messages() as messages:
+        try:
+            return await agent_fn(store, customer_id, prompt, **options)
+        except Exception as error:
+            raise _AgentCrashed(prompt, messages, error) from error
 
 
 @dataclass

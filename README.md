@@ -42,8 +42,13 @@ uv run python -m evals.ar_evals --split never_events
 uv run python -m evals.ar_evals --task task_04 task_10
 uv run python -m evals.ar_evals --retrieval golden     # none | golden | search
 uv run python -m evals.ar_evals --judge                # also score tone, on Sonnet
+uv run python -m evals.ar_evals --task task_11 --trace # also what the agent did in each trial
 uv run pytest -m e2e                                   # two live agent tests
 ```
+
+`--trace` prints, under each task, every trial step by step: the event (or each clerk message), each tool call
+with its arguments and outcome (a result, `DENIED` by a rule, or `HELD` for a person), the agent's reply, the rows
+it wrote, and, for a failed trial, the failed assertions and the diff against the target.
 
 One task costs about $0.10 on Opus 5.5.
 

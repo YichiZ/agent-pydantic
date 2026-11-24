@@ -43,6 +43,11 @@ class TableDiff:
     changed: tuple[str, ...] = ()  # 'INV-1301 (status, collections_paused)'
 
 
+def diff_text(d: TableDiff) -> str:
+    """'invoices +INV-1 -INV-2 ~INV-3 (status)': added, removed and changed ids."""
+    return ' '.join([d.table, *(f'+{i}' for i in d.added), *(f'-{i}' for i in d.removed), *(f'~{c}' for c in d.changed)])
+
+
 def project(db: ArDb) -> Projection:
     return {name: _rekey(name, {row_id: _strip_row(name, row) for row_id, row in rows.items()})
             for name, rows in db.dump().items() if name not in IGNORED_TABLES}
