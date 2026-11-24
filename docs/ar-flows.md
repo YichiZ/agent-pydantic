@@ -1,13 +1,13 @@
 # The AR coworker's flows
 
 One event starts one run for one customer account. The agent reads the account, decides, and
-proposes writes through its tools; policy code (`ar/policy.py`, rules P1 to P13) decides whether
+proposes writes through its tools; policy code (`ar/policy.py`, rules P1 to P15) decides whether
 each write happens. A write is allowed, held for a person (the tool records a pending approval and
 the run stops), or denied with a reason the agent reads before it changes course. Nothing carries
 over between runs except what is in the database, so one run hands work to a later one by what it
 writes there.
 
-The agent itself is not built yet. These flows are what the eval tasks (`db/tasks.json`) and the
+These flows are what the eval tasks (`db/tasks.json`) and the
 rules the agent reads ([`db/policy_solo.md`](../db/policy_solo.md)) specify; the tools and policy
 code they go through exist and are tested.
 

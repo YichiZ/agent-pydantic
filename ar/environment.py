@@ -1,4 +1,4 @@
-"""Dispatch by name, for the tests now and the eval runner later.
+"""Dispatch by name, for the tests and the eval runner.
 
 - `TOOLS`: the 17 agent tools, each with its kind and the capability it lives in (plan, Piece F).
 - `call_tool(store, customer_id, name, arguments)`: run one tool as the agent would.
