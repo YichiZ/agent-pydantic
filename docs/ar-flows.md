@@ -3,7 +3,7 @@
 One event starts one run for one customer account. The agent reads the account, decides, and
 proposes writes through its tools; policy code (`ar/policy.py`, rules P1 to P13) decides whether
 each write happens. A write is allowed, held for a person (the tool records a pending approval and
-the run stops), or denied with a reason the agent reads before it tries again. Nothing carries
+the run stops), or denied with a reason the agent reads before it changes course. Nothing carries
 over between runs except what is in the database, so one run hands work to a later one by what it
 writes there.
 
@@ -25,9 +25,9 @@ code they go through exist and are tested.
 
 ![How the flows connect](ar-flow-overview.svg)
 
-Every write the flows make goes through policy code first. Two tools hand the account to a person
-without a rule check: `escalate_to_human` only logs the hand-over, and `request_approval` only
-records a pending approval for a case no rule covers.
+Every write the flows make goes through policy code first, except the two hand-overs to a person,
+which check no rule: `escalate_to_human` only logs the hand-over (task 3), and `request_approval`,
+for a case no rule covers, only records a pending approval.
 
 ## Collect (`aging_check`)
 
@@ -67,7 +67,7 @@ The run step by step, and what policy checks, are in
 
 The agent checks the claim against the evidence before any credit. The auto-approve limit is
 $500.00: a credit at or under it is applied at once; above it, P10 holds it for a person. P9 denies
-a credit above the disputed amount or on a dispute that is not open.
+a credit above the disputed amount or the invoice balance, or on a dispute that is not open.
 
 | What the agent finds | What it does | End state | Task |
 |---|---|---|---|
