@@ -18,7 +18,6 @@ from pydantic_ai import capture_run_messages
 from pydantic_ai.messages import ModelMessage
 from pydantic_evals import Case, Dataset
 from pydantic_evals.dataset import increment_eval_metric
-from pydantic_evals.evaluators import Evaluator, EvaluatorContext
 
 from ar.assertions import human_marks
 from ar.data_model import ArDb, UnknownIdError
@@ -185,15 +184,6 @@ async def _agent_turn(agent_fn: AgentFn, store: Store, customer_id: str, prompt:
             raise _AgentCrashed(prompt, messages, error) from error
 
 
-@dataclass
-class StateAndAssertions(Evaluator[Task, TrialResult, None]):
-    """The trial's pass, split into its parts, as pydantic-evals assertions."""
-
-    def evaluate(self, ctx: EvaluatorContext[Task, TrialResult, None]) -> dict[str, bool]:
-        return {'db_match': ctx.output.db_match, 'assertions_ok': ctx.output.assertions_ok,
-                'agent_finished': ctx.output.error is None}
-
-
 async def run_tasks(tasks: Iterable[Task], agent_fn: AgentFn, *, trials: int = 1,
                     concurrency: int = DEFAULT_CONCURRENCY, clerk: ClerkFn | None = None,
                     retrieval: Retrieval = 'search', judge: JudgeFn | None = None,
@@ -210,8 +200,7 @@ async def run_tasks(tasks: Iterable[Task], agent_fn: AgentFn, *, trials: int = 1
         return result
 
     dataset = Dataset[Task, TrialResult, None](
-        name='ar_coworker', cases=[Case(name=task.id, inputs=task) for task in tasks],
-        evaluators=[StateAndAssertions()])
+        name='ar_coworker', cases=[Case(name=task.id, inputs=task) for task in tasks])
     report = await dataset.evaluate(trial, task_name='ar_trial', max_concurrency=concurrency, repeat=trials,
                                     progress=progress)
     if report.failures:
