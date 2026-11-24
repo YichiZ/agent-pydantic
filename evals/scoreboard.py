@@ -1,33 +1,13 @@
-"""Scoreboard: accuracy, cost and speed for the eval dataset, compared with a saved baseline.
+"""Scoring helpers: accuracy, cost and speed for an eval report, compared with a saved baseline.
 
-    uv run python -m evals.scoreboard              # run and compare with evals/baseline.json
-    uv run python -m evals.scoreboard --repeat 5   # each case 5 times, to see past model noise
-    uv run python -m evals.scoreboard --save       # also make this run the new baseline
-
-Uses the cases and evaluators in evals/support_evals.py as they are; it only swaps in a task
-that also records token cost.
+The bank agent these were written for is gone; the AR eval runner will call them.
 """
 
-import argparse
-import json
-from pathlib import Path
 from statistics import mean
 
-from pydantic_evals.dataset import increment_eval_metric
-
-from bank_support import SupportDependencies, SupportOutput, support_agent
-from evals.support_evals import Query, dataset
-
-BASELINE = Path(__file__).parent / 'baseline.json'
 COST_METRIC = 'cost_usd'
 # Lower is better for these; pass_rate is the only metric where higher is better.
 LOWER_IS_BETTER = ('cost_usd_per_case', 'mean_seconds')
-
-
-async def ask_with_cost(query: Query) -> SupportOutput:
-    result = await support_agent.run(query.question, deps=SupportDependencies(customer_id=query.customer_id))
-    increment_eval_metric(COST_METRIC, float(result.usage.cost or 0))
-    return result.output
 
 
 def summarize(rows: list[dict]) -> dict:
@@ -65,29 +45,3 @@ def rows_from(report) -> list[dict]:
     # The task itself raised: a failed run with no cost or time we can trust.
     crashed = [{'passed': False, 'cost_usd': 0.0, 'seconds': 0.0} for _ in report.failures]
     return ran + crashed
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument('--repeat', type=int, default=1)
-    parser.add_argument('--save', action='store_true', help='write this run to evals/baseline.json')
-    args = parser.parse_args()
-    if args.repeat < 1:
-        parser.error('--repeat must be at least 1')
-
-    report = dataset.evaluate_sync(ask_with_cost, repeat=args.repeat)
-    report.print(include_input=True, include_output=True)
-    current = summarize(rows_from(report))
-
-    if BASELINE.is_file():
-        print('\n'.join(compare(current, json.loads(BASELINE.read_text()))))
-    else:
-        print(json.dumps(current, indent=2))
-        print(f'No baseline yet; run with --save to create {BASELINE.name}.')
-    if args.save:
-        BASELINE.write_text(json.dumps(current, indent=2) + '\n')
-        print(f'Saved baseline to {BASELINE}.')
-
-
-if __name__ == '__main__':
-    main()
