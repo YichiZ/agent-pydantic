@@ -6,8 +6,8 @@
     uv run python -m evals.run_event event_20 --interactive          # you type the customer's lines
     uv run python -m evals.run_event --customer cus_corvid --chat --interactive
 
-Each event runs on a fresh copy of db/db.json after its setup; nothing is written to disk. Exits 2 on bad arguments
-or a malformed event file, else 0: an agent that crashes on one event is reported and the next one runs.
+Each event runs on a fresh copy of db/db.json after its setup; nothing is written to disk. Exits 2 on bad arguments,
+a malformed event file or a refused setup, else 0: an agent that crashes on one event is reported and the next runs.
 """
 
 import argparse
@@ -96,6 +96,7 @@ def main(argv: Sequence[str] | None = None, *, agent_fn: AgentFn = run_turn, cle
         return 2
     if args.list:
         print('\n'.join(list_lines(events.values(), db)))
+        return 0
     asyncio.run(run_all(jobs, agent_fn))
     return 0
 
