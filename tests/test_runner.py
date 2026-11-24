@@ -7,7 +7,7 @@ from scripted_agents import escalate_agent, noop_agent, one_line_clerk, raising_
 
 from ar.errors import PolicyDenied
 from ar.run_types import AgentTurn
-from evals.ar_runner import STOP, HarnessError, run_tasks, run_trial
+from evals.ar_runner import STOP, HarnessError, run_agent, run_tasks, run_trial
 from evals.ar_tasks import Assertion, load_tasks
 
 TASKS = {task.id: task for task in load_tasks()}
@@ -158,6 +158,12 @@ def test_chat_passes_history_from_one_turn_to_the_next_and_stops_at_the_turn_lim
 def test_chat_needs_a_clerk():
     with pytest.raises(ValueError, match='clerk'):
         asyncio.run(run_trial(TASKS['task_02'], noop_agent))
+
+
+@pytest.mark.parametrize('given', [{}, {'ticket': 'Event.', 'customer': one_line_clerk}])
+def test_running_the_agent_needs_exactly_one_of_a_ticket_and_a_customer(given, store):
+    with pytest.raises(ValueError, match='exactly one'):
+        asyncio.run(run_agent(store, 'cus_garnet', noop_agent, **given))
 
 
 def test_many_tasks_times_k_trials_each_on_its_own_store():

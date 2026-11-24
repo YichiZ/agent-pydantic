@@ -1,4 +1,5 @@
-"""The --trace view of one trial: what the agent did, step by step, as plain lines for a terminal.
+"""The --trace view of one trial: what the agent did, step by step, as plain lines for a terminal. `evals.run_event`
+prints the same view for an event.
 
 Pure functions from a `TrialResult` and its `TrialTrace` to lines. A turn's history is read as pydantic-ai
 messages: each tool call the model made, paired by call id with its return. In pydantic-ai 2.71 a refused call
@@ -44,10 +45,9 @@ def trial_lines(number: int, result: TrialResult) -> list[str]:
     """The trial's header, then indented under it: its trace and, if it failed, the failed assertions and the diff
     against the target."""
     verdict = 'PASS' if result.passed else 'FAIL'
-    head = (f'  trial {number}  {verdict}  {_count(result.tool_calls, "tool call")}  ${result.cost_usd:.4f}  '
-            f'{result.seconds:.1f}s')
-    body = [*trace_lines(result.trace, result.error), *_labelled('failed', result.failed_assertions),
-            *_labelled('diff', [diff_text(d) for d in result.diff])]
+    head = f'  trial {number}  {verdict}  {totals(result.tool_calls, result.cost_usd, result.seconds)}'
+    body = [*trace_lines(result.trace, result.error), *labelled('failed', result.failed_assertions),
+            *labelled('diff', [diff_text(d) for d in result.diff])]
     return [head, *(f'    {line}' if line else '' for line in body)]
 
 
@@ -58,15 +58,20 @@ def trace_lines(trace: TrialTrace, error: str | None = None) -> list[str]:
     firsts = accumulate((len(found or ()) for found in calls), initial=1)  # calls are numbered across turns
     turns = [line for turn, found, first in zip(trace.turns, calls, firsts)
              for line in _turn_lines(turn, found, first, trace.chat)]
-    return [*turns, *_labelled('error', [error] if error else []), *_wrote_lines(trace.wrote)]
+    return [*turns, *labelled('error', [error] if error else []), *_wrote_lines(trace.wrote)]
+
+
+def totals(tool_calls: int, cost_usd: float, seconds: float) -> str:
+    """`3 tool calls  $0.0812  6.2s`"""
+    return f'{_count(tool_calls, "tool call")}  ${cost_usd:.4f}  {seconds:.1f}s'
 
 
 def _turn_lines(turn: TraceTurn, calls: tuple[_Call, ...] | None, first: int, chat: bool) -> list[str]:
     asked, answered = ('clerk', 'agent') if chat else ('event', 'final')
     steps = (['no trace available for this turn'] if calls is None
              else [line for number, call in enumerate(calls, first) for line in _call_lines(number, call)])
-    reply = [] if turn.reply is None else _labelled(answered, [turn.reply])
-    return [*_labelled(asked, [turn.prompt]), *steps, *reply]
+    reply = [] if turn.reply is None else labelled(answered, [turn.reply])
+    return [*labelled(asked, [turn.prompt]), *steps, *reply]
 
 
 def _calls(history: Any) -> tuple[_Call, ...] | None:
@@ -90,11 +95,16 @@ def _turn_start(history: Sequence[ModelRequest | ModelResponse]) -> int:
 def _call_lines(number: int, call: _Call) -> list[str]:
     """`3  amount_due(invoice_ids=["INV-1"])`, then each long text argument in full, then the outcome."""
     name, args = call.part.tool_name, call.part.args_as_dict()
-    shown = str(args.get('id')) if name == LOAD_TOOL else ', '.join(f'{k}={_inline(v)}' for k, v in args.items())
     texts = [line for key, value in args.items() if _is_long_text(value)
              for line in _block(f'     {key}: ', value)]
     outcome = _outcome(call)
-    return [f'{number:<3}{name}({shown})', *texts, *([] if outcome is None else _block(RESULT, outcome))]
+    return [f'{number:<3}{call_text(name, args)}', *texts, *([] if outcome is None else _block(RESULT, outcome))]
+
+
+def call_text(name: str, args: Mapping[str, Any]) -> str:
+    """`amount_due(invoice_ids=["INV-1"])` on one line: a long text as a short preview, any other long value cut."""
+    shown = str(args.get('id')) if name == LOAD_TOOL else ', '.join(f'{k}={_inline(v)}' for k, v in args.items())
+    return f'{name}({shown})'
 
 
 def _outcome(call: _Call) -> str | None:
@@ -144,10 +154,10 @@ def _wrote_lines(wrote: Sequence[TableDiff]) -> list[str]:
     count."""
     texts = [f'{d.table} +{_count(len(d.added), "row")}' if d.table == ACTION_LOG else diff_text(d)
              for d in sorted(wrote, key=lambda d: d.table == ACTION_LOG)]
-    return _labelled('wrote', texts or ['nothing'])
+    return labelled('wrote', texts or ['nothing'])
 
 
-def _labelled(label: str, items: Sequence[str]) -> list[str]:
+def labelled(label: str, items: Sequence[str]) -> list[str]:
     """Each item in full, wrapped; the label on the first line only, everything else aligned under the text."""
     return [line for i, item in enumerate(items) for line in _block(f'{"" if i else label:<{LABEL}}', item)]
 

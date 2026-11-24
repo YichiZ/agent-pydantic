@@ -52,6 +52,15 @@ it wrote, and, for a failed trial, the failed assertions and the diff against th
 
 One task costs about $0.09 on Opus 5.5.
 
+To watch the agent on the 20 events in [`db/events/`](db/events/) (also live):
+
+```bash
+uv run python -m evals.run_event event_06              # one event: its context, then the same trace as --trace
+uv run python -m evals.run_event --all                 # every event; --list shows them, --interactive lets you be the customer
+```
+
+Events are not scored: there is no reference answer, so the command prints what the agent did and no PASS or FAIL.
+
 ## The eval set
 
 - 20 tasks in [tau2-bench](https://github.com/sierra-research/tau2-bench)'s task schema. The format

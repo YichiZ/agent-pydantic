@@ -42,6 +42,18 @@ judgment, or the system has no good way to do the right thing.
 `tests/test_events.py` checks that every event is well formed, names real rows, and that its setup
 replays through the real tools.
 
-There is no command yet that runs an event. Until there is, the eval runner's building blocks do
-it: `fresh_store`, the setup steps through `ar.environment`, then `ar.agent.run_turn` with the
-ticket.
+`evals/run_event.py` runs them against the real model (it needs `ANTHROPIC_API_KEY` in `.env`). Each
+event runs on a fresh copy of `db/db.json` with its setup replayed; nothing is written to disk. For
+each it prints the situation and open question, the setup steps, and what the agent did: every
+tool call with its outcome, full message bodies, its summary and the rows it wrote.
+
+```bash
+uv run python -m evals.run_event --list                 # ids, types, accounts; runs nothing
+uv run python -m evals.run_event event_06               # one event; several ids run in order
+uv run python -m evals.run_event --all                  # all twenty, in order
+uv run python -m evals.run_event event_20 --interactive # type the customer's lines yourself
+uv run python -m evals.run_event --customer cus_garnet --event "Event: aging_check. Account: Garnet Tooling (cus_garnet)."
+```
+
+A chat event is played by the simulated clerk unless `--interactive` is given; an empty line or
+`quit` ends it.
