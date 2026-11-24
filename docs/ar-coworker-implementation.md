@@ -413,7 +413,8 @@ agent runs on Opus 5.5.
 ### 6.2 Commits and pushes
 
 One commit per wave, made only when `uv run pytest` passes, then pushed to
-`origin/claude/charming-moore-e39db0`. Messages follow the repo's `<type>: <description>` format.
+`origin/claude/charming-moore-e39db0`. Each wave then gets its own pull request into `main`,
+merged with a merge commit so the working branch stays a clean ancestor. Messages follow the repo's `<type>: <description>` format.
 
 | When | Commit |
 |---|---|
@@ -425,7 +426,7 @@ One commit per wave, made only when `uv run pytest` passes, then pushed to
 | wave 5 | `feat: AR eval baseline`, plus one `fix:` commit per harness fix |
 | wave 6 | `fix:` or `refactor:` commits from review |
 
-No pull request is opened and nothing is merged to `main` unless asked.
+Steps 1 to 3 were merged this way as pull requests 2, 3 and 1.
 
 ## 7. Done means
 

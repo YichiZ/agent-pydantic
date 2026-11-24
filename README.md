@@ -8,11 +8,12 @@ The eval set is built first and is the specification for the agent that follows.
 
 ## Status
 
-Early. Only the design, the data and the base code exist; there is no agent to run yet.
+The eval set, the data layer, the policy rules and the tools exist. There is no agent to run yet.
 
 - Done: [design](docs/ar-coworker-design.md), [implementation plan](docs/ar-coworker-implementation.md),
-  synthetic AR database, eval set of 20 tasks, data model and ledger (`ar/`), scoreboard (`evals/scoreboard.py`).
-- Not built yet: policy rules, the 17 tools, the eval runner, the agent.
+  synthetic AR database, eval set of 20 tasks, data model and ledger, 13 policy rules, 17 tools,
+  and an offline replay of every task's reference actions through the real tools.
+- Not built yet: the eval runner and the agent.
 
 ## Setup
 
@@ -24,7 +25,7 @@ A `.env` with `ANTHROPIC_API_KEY` is only needed later, for live agent runs. Not
 
 ```bash
 uv run pytest             # offline tests
-uv run pytest --cov=ar    # with coverage of the data model and ledger
+uv run pytest --cov=ar    # with coverage of the ar/ package
 ```
 
 ## The eval set
@@ -40,8 +41,8 @@ Details are in [`db/README.md`](db/README.md) and section 2 of the
 
 ## Layout
 
-- `docs/`: design, its diagram, and the implementation plan
+- `docs/`: design, its diagram, the implementation plan, and a walk-through of one event
 - `db/`: database, tasks, splits, policy text and knowledge documents
-- `ar/`: data model and ledger
+- `ar/`: data model, ledger, policy rules, tools, and the assertions the evals use
 - `evals/scoreboard.py`: pass rate, cost and latency against a baseline
 - `tests/`: offline tests

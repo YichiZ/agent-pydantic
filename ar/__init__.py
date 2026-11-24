@@ -1,1 +1,1 @@
-"""Accounts receivable coworker: data model, ledger, and (later) policy, tools and agent."""
+"""Accounts receivable coworker: data model, ledger, policy and tools (the agent comes later)."""
