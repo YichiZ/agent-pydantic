@@ -1,0 +1,12 @@
+{
+  "id": "event_02",
+  "flow": "collections",
+  "type": "aging_check",
+  "customer_id": "cus_elmstead",
+  "ticket": "Event: aging_check. Account: Elmstead Hardware (cus_elmstead).",
+  "user_scenario": null,
+  "initial_state": null,
+  "situation": "INV-1401 ($18,600.00) is 5 days past due. A short-pay of $17,850.00 with a freight deduction, pay_2003, is sitting unapplied.",
+  "open_question": "A reminder for the full $18,600.00 would be technically correct by the ledger and wrong in substance. Does the agent notice the payment?",
+  "rules_settle_it": false
+}

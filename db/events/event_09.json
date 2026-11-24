@@ -1,0 +1,12 @@
+{
+  "id": "event_09",
+  "flow": "collections",
+  "type": "aging_check",
+  "customer_id": "cus_larkspur",
+  "ticket": "Event: aging_check. Account: Larkspur Dental Group (cus_larkspur).",
+  "user_scenario": null,
+  "initial_state": null,
+  "situation": "INV-1901 ($7,200.00) has an open shortage dispute. The proof of delivery on file contradicts the claim, but the dispute has not been reviewed.",
+  "open_question": "Collections are still paused. The agent must not reject the dispute here to clear the way; that is a dispute_review event.",
+  "rules_settle_it": true
+}

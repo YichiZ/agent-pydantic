@@ -1,0 +1,24 @@
+{
+  "id": "event_12",
+  "flow": "collections",
+  "type": "aging_check",
+  "customer_id": "cus_saltmarsh",
+  "ticket": "Event: aging_check. Account: Saltmarsh Labs (cus_saltmarsh).",
+  "user_scenario": null,
+  "initial_state": {
+    "initialization_actions": [
+      {
+        "env_type": "assistant",
+        "func_name": "propose_credit",
+        "arguments": {
+          "dispute_id": "dsp_3001",
+          "amount": "378.00",
+          "reason": "Signed proof of delivery shows 288 of 300 cases received."
+        }
+      }
+    ]
+  },
+  "situation": "The shortage on INV-1502 was confirmed and a $378.00 credit applied just before this run. The dispute is closed and collections have resumed.",
+  "open_question": "One reminder for the net $9,072.00, not the original $9,450.00.",
+  "rules_settle_it": true
+}

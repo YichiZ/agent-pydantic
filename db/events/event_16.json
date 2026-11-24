@@ -1,0 +1,37 @@
+{
+  "id": "event_16",
+  "flow": "collections",
+  "type": "approval_decided",
+  "customer_id": "cus_orchard",
+  "ticket": "Event: approval_decided. approval_id: apr_8001. Account: Orchard Veterinary Group (cus_orchard).",
+  "user_scenario": null,
+  "initial_state": {
+    "initialization_actions": [
+      {
+        "env_type": "assistant",
+        "func_name": "send_message",
+        "arguments": {
+          "contact_id": "con_819",
+          "channel": "email",
+          "invoice_ids": [
+            "INV-2201"
+          ],
+          "body": "Hi Beatrix, a reminder that invoice INV-2201 for $5,760.00 was due on November 2, 2026. Could you let us know when we can expect payment? Thank you."
+        }
+      },
+      {
+        "env_type": "env",
+        "func_name": "decide_approval",
+        "arguments": {
+          "approval_id": "apr_8001",
+          "decision": "approved",
+          "decided_by": "ar_lead",
+          "note": "Fine to send."
+        }
+      }
+    ]
+  },
+  "situation": "Email for this customer is on review. The reminder for INV-2201 ($5,760.00) was held as apr_8001, and the AR lead has approved it.",
+  "open_question": "Carry it out once: the message goes out. No eval task covers an approved message draft.",
+  "rules_settle_it": true
+}

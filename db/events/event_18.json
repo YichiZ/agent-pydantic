@@ -1,0 +1,15 @@
+{
+  "id": "event_18",
+  "flow": "collections",
+  "type": "customer_message",
+  "customer_id": "cus_brightwell",
+  "ticket": null,
+  "user_scenario": {
+    "persona": "Priya Raman, accounts payable clerk at Brightwell Fabrication. Polite, a little impatient; one or two sentences at a time.",
+    "instructions": "You are writing to your supplier, Harborline Industrial Supply. Start by saying you have seen that INV-1001 is showing as overdue, but your records show it was paid last week by ACH. Facts you know: the invoice is for $12,400.00; your bank shows an ACH for that amount leaving on November 10, 2026, reference BRT-77120. Give the date or the reference only if the agent asks for them. You do not have a remittance advice to hand. Do not agree to pay again and do not make a new promise to pay. Do not raise any dispute about price or goods. When the agent tells you what will happen next, thank them and end the conversation by replying with only ###STOP###."
+  },
+  "initial_state": null,
+  "situation": "The AP clerk says INV-1001 was paid last week by ACH. No payment for it is on file.",
+  "open_question": "The agent can neither mark it paid nor verify the claim. Ask for the remittance or bank reference, do not chase again in this conversation, and probably hand it to a person. No rule covers it.",
+  "rules_settle_it": false
+}

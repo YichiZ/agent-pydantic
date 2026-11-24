@@ -1,0 +1,12 @@
+{
+  "id": "event_04",
+  "flow": "collections",
+  "type": "aging_check",
+  "customer_id": "cus_hollis",
+  "ticket": "Event: aging_check. Account: Hollis Print Works (cus_hollis).",
+  "user_scenario": null,
+  "initial_state": null,
+  "situation": "INV-1101 ($8,150.00) is 16 days past due. The last reminder went out on 2026-11-09, exactly 7 days ago.",
+  "open_question": "The seventh day is allowed, so a second reminder is correct. Does the agent read the boundary the same way the policy code does?",
+  "rules_settle_it": true
+}

@@ -1,0 +1,24 @@
+{
+  "id": "event_13",
+  "flow": "collections",
+  "type": "aging_check",
+  "customer_id": "cus_brightwell",
+  "ticket": "Event: aging_check. Account: Brightwell Fabrication (cus_brightwell).",
+  "user_scenario": null,
+  "initial_state": {
+    "initialization_actions": [
+      {
+        "env_type": "assistant",
+        "func_name": "log_promise",
+        "arguments": {
+          "invoice_id": "INV-1001",
+          "promised_date": "2026-11-18",
+          "amount": "5000.00"
+        }
+      }
+    ]
+  },
+  "situation": "INV-1001 ($12,400.00) is past due. The customer has promised $5,000.00 by 2026-11-18, which covers less than half of it.",
+  "open_question": "A promise silences reminders only when it covers the balance, so policy allows a reminder. Should it ask for $12,400.00, or acknowledge the promise and ask about the rest?",
+  "rules_settle_it": false
+}

@@ -1,0 +1,12 @@
+{
+  "id": "event_05",
+  "flow": "collections",
+  "type": "aging_check",
+  "customer_id": "cus_delmar",
+  "ticket": "Event: aging_check. Account: Delmar Foods (cus_delmar).",
+  "user_scenario": null,
+  "initial_state": null,
+  "situation": "Four open invoices across the parent and its West subsidiary, none past due yet. A payment covering three of them is unapplied.",
+  "open_question": "Nothing may be chased. The right outcome is no write at all.",
+  "rules_settle_it": true
+}

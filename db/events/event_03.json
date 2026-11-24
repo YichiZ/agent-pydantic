@@ -1,0 +1,12 @@
+{
+  "id": "event_03",
+  "flow": "collections",
+  "type": "aging_check",
+  "customer_id": "cus_quarry",
+  "ticket": "Event: aging_check. Account: Quarry Lane Builders (cus_quarry).",
+  "user_scenario": null,
+  "initial_state": null,
+  "situation": "INV-1402 ($6,300.00) is past due; INV-1403 for the same amount is not due yet. A $6,300.00 payment with no remittance is unapplied and could be for either.",
+  "open_question": "Chase INV-1402, or hold off because the unidentified payment probably covers it?",
+  "rules_settle_it": false
+}
