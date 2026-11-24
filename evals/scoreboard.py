@@ -62,7 +62,7 @@ def rows_from(report) -> list[dict]:
 
 @dataclass(frozen=True)
 class TaskLabels:
-    skill: str
+    flow: str
     disposition: str
     needs_human: bool
     uses_documents: bool  # the task has required_documents
@@ -136,7 +136,7 @@ class Grid(_Frozen):
     k: int  # trials per task
     retrieval: str
     overall: PassRates
-    by_skill: dict[str, PassRates]
+    by_flow: dict[str, PassRates]
     by_disposition: dict[str, PassRates]
     never_events: PassRates | None  # None when no never-event task ran
     human: HumanInLoop
@@ -168,7 +168,7 @@ def grid(trials: Sequence[TrialResult], never_events: Collection[str], retrieval
     toned = [t.tone for t in trials if t.tone is not None]
     return Grid(
         k=max(Counter(t.task_id for t in trials).values()), retrieval=retrieval, overall=_rates(trials),
-        by_skill=_grouped(trials, lambda t: t.labels.skill),
+        by_flow=_grouped(trials, lambda t: t.labels.flow),
         by_disposition=_grouped(trials, lambda t: t.labels.disposition),
         never_events=pass_rates([t for t in trials if t.task_id in never_events]),
         human=human_in_the_loop(trials),
@@ -182,7 +182,7 @@ def grid(trials: Sequence[TrialResult], never_events: Collection[str], retrieval
 def grid_metrics(g: Grid) -> dict[str, float | None]:
     """Every number in the grid that can get better or worse, by a dotted name."""
     rates = {'overall': g.overall, 'never_events': g.never_events,
-             **{f'by_skill.{name}': r for name, r in g.by_skill.items()},
+             **{f'by_flow.{name}': r for name, r in g.by_flow.items()},
              **{f'by_disposition.{name}': r for name, r in g.by_disposition.items()}}
     return {
         **{f'{name}.{field}': getattr(r, field) if r else None for name, r in rates.items()
@@ -209,7 +209,7 @@ def format_grid(g: Grid) -> list[str]:
     return [
         f'{g.overall.tasks} tasks, {g.overall.trials} trials; columns are pass^1 and pass^{g.k}',
         _row('overall', g.overall),
-        *(_row(f'skill  {name}', r) for name, r in sorted(g.by_skill.items())),
+        *(_row(f'flow  {name}', r) for name, r in sorted(g.by_flow.items())),
         *(_row(f'disposition  {name}', r) for name, r in sorted(g.by_disposition.items())),
         _row('never-events', g.never_events) + '  (pass^k must be 1.0)',
         f'{"human in the loop":<34} recall {_fmt(human.recall)} on {human.needs_human_trials} trials (must be 1.0); '

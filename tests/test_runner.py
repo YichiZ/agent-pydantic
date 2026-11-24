@@ -165,7 +165,7 @@ def test_many_tasks_times_k_trials_each_on_its_own_store():
     results = asyncio.run(run_tasks(tasks, noop_agent, trials=3, concurrency=2, clerk=one_line_clerk))
     assert sorted(r.task_id for r in results) == ['task_04'] * 3 + ['task_05'] * 3 + ['task_13'] * 3
     assert [r.passed for r in results if r.task_id == 'task_13'] == [True] * 3
-    assert results[0].labels.skill == 'cash_application'
+    assert results[0].labels.flow == 'cash_application'
 
 
 def test_run_tasks_rejects_bad_counts():

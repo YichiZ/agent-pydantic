@@ -96,7 +96,7 @@ def human_marks(db: ArDb, customer_id: str) -> frozenset[str]:
 
 def labels(task: Task) -> TaskLabels:
     notes = task.annotations
-    return TaskLabels(skill=notes.skill, disposition=notes.disposition, needs_human=notes.needs_human,
+    return TaskLabels(flow=notes.flow, disposition=notes.disposition, needs_human=notes.needs_human,
                       uses_documents=bool(task.required_documents))
 
 

@@ -12,7 +12,7 @@ The agent, the eval runner and a saved baseline exist.
 
 - Built: [design](docs/ar-coworker-design.md), [implementation plan](docs/ar-coworker-implementation.md),
   synthetic AR database, eval set of 20 tasks, data model and ledger, 15 policy rules, 17 tools,
-  the agent (one Pydantic AI orchestrator on Opus 5.5 with three skills loaded on demand), and the
+  the agent (one Pydantic AI orchestrator on Opus 5.5 with three capabilities loaded on demand), and the
   eval runner.
 - Baseline (`evals/ar_baseline.json`): all 20 tasks pass on each of 4 trials, 80 runs in all, at
   about $0.10 and 7 seconds per run.
@@ -56,8 +56,8 @@ One task costs about $0.10 on Opus 5.5.
 
 - 20 tasks in [tau2-bench](https://github.com/sierra-research/tau2-bench)'s task schema. The format
   is tau2's; the tasks and data are written for this repo and are synthetic.
-- A `never_events` split (9 tasks) of forbidden actions, plus `base` (all 20) and `cross_skill`.
-- Each task is labelled with its skill, expected disposition and whether a person must be involved.
+- A `never_events` split (9 tasks) of forbidden actions, plus `base` (all 20) and `cross_flow`.
+- Each task is labelled with its flow, expected disposition and whether a person must be involved.
 
 Details are in [`db/README.md`](db/README.md) and section 2 of the
 [implementation plan](docs/ar-coworker-implementation.md). The design is in

@@ -12,7 +12,7 @@ from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart, Tool
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from ar.agent import MAX_REQUESTS, agent, run_turn
-from ar.agent_tools import SKILL_CAPABILITIES, WRAPPERS
+from ar.agent_tools import CAPABILITY_CATALOG, WRAPPERS
 from ar.data_model import InvoiceStatus, UnknownCustomerError
 from ar.environment import TOOLS, call_tool, check_assertion, fresh_store
 from ar.errors import TOOL_ERRORS
@@ -21,8 +21,8 @@ from ar.store import Store
 
 DB_DIR = Path(__file__).resolve().parent.parent / 'db'
 TASKS = {task['id']: task for task in json.loads((DB_DIR / 'tasks.json').read_text())}
-BASE_TOOLS = {name for name, spec in TOOLS.items() if spec.skill == 'base'}
-SKILLS = ('collections', 'cash-application', 'disputes')
+BASE_TOOLS = {name for name, spec in TOOLS.items() if spec.capability == 'base'}
+CAPABILITY_IDS = ('collections', 'cash-application', 'disputes')
 DONE = {'summary': 'Done.', 'actions': []}
 
 type Call = tuple[str, dict[str, Any]]
@@ -76,8 +76,8 @@ def reference_calls(task_id: str) -> list[Call]:
 
 # Which tools the model is offered.
 
-def test_base_tools_are_offered_first_and_all_17_once_every_skill_is_loaded(store: Store) -> None:
-    script = Script(load(*SKILLS))
+def test_base_tools_are_offered_first_and_all_17_once_every_capability_is_loaded(store: Store) -> None:
+    script = Script(load(*CAPABILITY_IDS))
     run(script, store, 'cus_pinecrest')
     # In 2.71.0 a deferred capability's tools are in the request parameters from the start, marked
     # `defer_loading`, but are declared to the model (`info.function_tools`) only once `load_capability`
@@ -94,7 +94,7 @@ def test_no_tool_description_names_a_row_in_the_database() -> None:
     described = {Tool(wrapper).tool_def.name: json.dumps([Tool(wrapper).tool_def.description,
                                                           Tool(wrapper).tool_def.parameters_json_schema])
                  for wrapper in WRAPPERS}
-    described |= {capability_id: line for capability_id, line in SKILL_CAPABILITIES.values()}
+    described |= {capability_id: line for capability_id, line in CAPABILITY_CATALOG.values()}
     assert {name: sorted(i for i in ids if i in text) for name, text in described.items()
             if any(i in text for i in ids)} == {}
 
@@ -211,7 +211,7 @@ def test_every_tool_has_a_sample_call() -> None:
 @pytest.mark.parametrize(('customer_id', 'name', 'arguments'), SAMPLE_CALLS)
 def test_a_wrapper_matches_calling_the_tool_directly(customer_id: str, name: str, arguments: dict[str, Any]) -> None:
     by_agent, direct = (fresh_store(DB_DIR / 'db.json', DB_DIR / 'documents') for _ in range(2))
-    turn = run(Script(load(*SKILLS), (name, arguments)), by_agent, customer_id)
+    turn = run(Script(load(*CAPABILITY_IDS), (name, arguments)), by_agent, customer_id)
     (part,) = returns(turn, name)
     try:
         expected, outcome = call_tool(direct, customer_id, name, arguments), 'success'
