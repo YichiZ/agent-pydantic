@@ -1,6 +1,6 @@
 """Run the AR eval set against the agent; print each task, the grid, and the change from the baseline.
 
-    uv run python -m evals.ar_evals                       # all 20 tasks, one trial
+    uv run python -m evals.ar_evals                       # all 21 tasks, one trial
     uv run python -m evals.ar_evals --trials 4            # pass^4
     uv run python -m evals.ar_evals --split never_events
     uv run python -m evals.ar_evals --task task_04 task_10

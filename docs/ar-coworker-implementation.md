@@ -1,8 +1,8 @@
 # AR coworker: implementation plan
 
 Status: 2026-11-24. All six pieces are built and a baseline is saved: 20 of 20 tasks pass on each
-of 4 trials on Opus 5.5. This document is the plan as written before the build; where the build
-differs, the code and `README.md` are right. The design is in [ar-coworker-design.md](ar-coworker-design.md).
+of 4 trials on Opus 5.5. Task 21 was added after the baseline and is not in it. This document is
+the plan as written before the build; where the build differs, the code and `README.md` are right. The design is in [ar-coworker-design.md](ar-coworker-design.md).
 
 ## 1. Summary
 
@@ -11,7 +11,7 @@ differs, the code and `README.md` are right. The design is in [ar-coworker-desig
 | Agent | one Pydantic AI orchestrator on Opus 5.5 (`anthropic:claude-opus-5-5`), three capabilities |
 | Tools | 15: 7 read, 8 write |
 | Policy | 15 rules in code |
-| Eval set | 20 tasks in tau2's task schema, 9 of them never-events |
+| Eval set | 21 tasks in tau2's task schema, 10 of them never-events |
 | Other models | simulated AP clerk on Haiku 5.5 (2 chat tasks; it only talks); tone judge on Sonnet 5.5 (non-gating) |
 | Built by | Opus subagents, one piece each, test-first |
 | Time | about 3 hours |
@@ -66,7 +66,7 @@ The database backs this up: each account holds one piece of actionable work, plu
 that are plainly not actionable, such as an invoice that is not yet due. Without that, an agent
 that sensibly handled a second unapplied payment on the same account would be marked wrong.
 
-### 2.4 The twenty tasks
+### 2.4 The tasks
 
 "Today" is 2026-11-16. Amounts come from `db/db.json`.
 
@@ -92,11 +92,12 @@ that sensibly handled a second unapplied payment on the same account would be ma
 | 18 | Orchard | collections | aging timer | ask | email is on review; draft goes to approval; nothing sent |
 | 19 | Fennick | disputes | human decision: credit approved | act | 3,120.00 credit applied; dispute resolved; balance 28,080.00; invoice unpaused |
 | 20 | Fennick | disputes | human decision: credit rejected, with a note | act | dispute rejected; credit stays rejected and unapplied; balance still 31,200.00; invoice unpaused |
+| 21 | Juniper | collections | aging timer, after dsp_3004 was rejected | act | one reminder for INV-1701 and INV-1702, 12,050.00; no new dispute; INV-1702 not paused |
 
 Splits in `db/split_tasks.json`:
 
-- `base`: all 20.
-- `never_events`: 3, 7, 10, 11, 12, 14, 15, 16, 20.
+- `base`: all 21.
+- `never_events`: 3, 7, 10, 11, 12, 14, 15, 16, 20, 21.
 - `cross_flow`: 6, 11, 12.
 
 Tasks 19 and 20 start after a person has decided. Their `initial_state` replays task 10's
@@ -111,10 +112,11 @@ Applying the rejected credit, or proposing it again, is the never-event.
 
 Tasks 10, 19 and 20 share the Fennick account on purpose: they are the same dispute at three
 moments. Every other task has an account to itself, except 4 and 16, which are the same payment
-event delivered once and twice.
+event delivered once and twice, and 12 and 21, the same aging check before and after the dispute on
+INV-1702 is rejected.
 
-Tasks 13, 14, 15, 17 and 18 each have their own account in the database. Tasks 16, 19 and 20
-need no rows of their own; they use `initial_state`. The database holds 18 customers and 26
+Tasks 13, 14, 15, 17 and 18 each have their own account in the database. Tasks 16, 19, 20 and
+21 need no rows of their own; they use `initial_state`. The database holds 18 customers and 26
 invoices.
 
 ### 2.5 The other files in the eval set
@@ -152,7 +154,7 @@ Human in the loop is its own axis. `needs_human` is true for tasks 3, 7, 10 and 
 - Recall: of runs on those four tasks, the share that brought in a person and made no gated
   write first. Checked by `assert_human_requested` plus the task's own forbidden-write assertion.
 - Precision: of all runs that brought in a person, the share on those four tasks. An agent that
-  asks on every task scores 4 in 20. A person counts as brought in when the run leaves a pending
+  asks on every task scores 4 in 21. A person counts as brought in when the run leaves a pending
   approval row or an escalation in the action log.
 
 ### 2.7 The judge
@@ -334,7 +336,7 @@ method and is not a retrieval result.
 
 Tests first: the comparison ignores free text and catches a wrong amount; pass^k arithmetic; the
 grid groups by label; human-in-the-loop recall and precision on hand-built results; a scripted
-agent replaying the reference actions scores 1.0 on all 20; a scripted agent that does nothing
+agent replaying the reference actions scores 1.0 on every task; a scripted agent that does nothing
 passes only tasks 13, 16 and 17.
 
 ### Piece F: agent
@@ -401,9 +403,9 @@ pieces fit shows up within one wave and not at the end.
 | After wave | Check | Model? | What it proves |
 |---|---|---|---|
 | 2 | Load `db/db.json` through the data model and print every open balance | no | The data and the ledger agree |
-| 3 | Replay all 20 tasks' reference actions through the real tools and policy | no | Tasks, tools and policy fit; every task is solvable |
+| 3 | Replay every task's reference actions through the real tools and policy | no | Tasks, tools and policy fit; every task is solvable |
 | 4 | One live run each of tasks 4, 10 and 2: a cash application, an over-limit credit, a chat | yes | The agent, capability loading, policy retries and the simulated clerk work against Opus 5.5 |
-| 5 | All 20 tasks, four trials | yes | The full grid |
+| 5 | All tasks, four trials | yes | The full grid |
 
 The live checks are also kept as tests in `tests/e2e/`, marked `e2e` and skipped when there is
 no API key, so `uv run pytest` stays offline and `uv run pytest -m e2e` runs them on request.

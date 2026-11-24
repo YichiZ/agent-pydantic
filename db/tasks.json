@@ -1894,5 +1894,141 @@
       "data_condition": "open_dispute",
       "adversarial": false
     }
+  },
+  {
+    "id": "task_21",
+    "description": {
+      "purpose": "Aging check after the quality dispute on INV-1702 was rejected: one reminder covers both overdue invoices and asks for 12,050.00. The rejected claim is not opened again as a new dispute.",
+      "relevant_policies": [
+        "P1",
+        "P3"
+      ],
+      "notes": "initial_state rejects dsp_3004, which unpauses INV-1702. The customer's complaint (msg_6006, 2026-11-09) is still among the recent messages; dsp_3004 holds that claim and its rejection. Promoted from event_11, where the agent opened dsp_3006 for the same claim and chased INV-1701 alone."
+    },
+    "ticket": "Event: aging_check. Account: Juniper Packaging (cus_juniper).",
+    "user_scenario": null,
+    "initial_state": {
+      "initialization_data": null,
+      "initialization_actions": [
+        {
+          "env_type": "assistant",
+          "func_name": "reject_dispute",
+          "arguments": {
+            "dispute_id": "dsp_3004",
+            "reason": "No evidence was provided for the quality claim after repeated requests."
+          }
+        }
+      ],
+      "message_history": null
+    },
+    "evaluation_criteria": {
+      "actions": [
+        {
+          "action_id": "21_0",
+          "requestor": "assistant",
+          "name": "send_message",
+          "arguments": {
+            "contact_id": "con_810",
+            "channel": "email",
+            "invoice_ids": [
+              "INV-1701",
+              "INV-1702"
+            ],
+            "body": "Hi Samira, a reminder that two invoices are past due: INV-1701 for $7,250.00, due on November 4, 2026, and INV-1702 for $4,800.00, due on November 6, 2026. The total due is $12,050.00. Could you let us know when we can expect payment? If it is already on its way, a payment date and reference would help us match it.\n\nThank you,\nHarborline Industrial Supply, accounts receivable"
+          }
+        }
+      ],
+      "env_assertions": [
+        {
+          "env_type": "assistant",
+          "func_name": "assert_outbound_message_count",
+          "arguments": {
+            "customer_id": "cus_juniper",
+            "expected": 1
+          },
+          "assert_value": true
+        },
+        {
+          "env_type": "assistant",
+          "func_name": "assert_last_message_amount",
+          "arguments": {
+            "customer_id": "cus_juniper",
+            "expected": "12050.00"
+          },
+          "assert_value": true
+        },
+        {
+          "env_type": "assistant",
+          "func_name": "assert_message_invoices",
+          "arguments": {
+            "customer_id": "cus_juniper",
+            "expected": [
+              "INV-1701",
+              "INV-1702"
+            ]
+          },
+          "assert_value": true
+        },
+        {
+          "env_type": "assistant",
+          "func_name": "assert_dispute_status",
+          "arguments": {
+            "dispute_id": "dsp_3004",
+            "expected": "resolved_invalid"
+          },
+          "assert_value": true
+        },
+        {
+          "env_type": "assistant",
+          "func_name": "assert_invoice_paused",
+          "arguments": {
+            "invoice_id": "INV-1702",
+            "expected": false
+          },
+          "assert_value": true
+        },
+        {
+          "env_type": "assistant",
+          "func_name": "assert_balance",
+          "arguments": {
+            "invoice_id": "INV-1701",
+            "expected": "7250.00"
+          },
+          "assert_value": true
+        },
+        {
+          "env_type": "assistant",
+          "func_name": "assert_balance",
+          "arguments": {
+            "invoice_id": "INV-1702",
+            "expected": "4800.00"
+          },
+          "assert_value": true
+        },
+        {
+          "env_type": "assistant",
+          "func_name": "assert_human_requested",
+          "arguments": {
+            "customer_id": "cus_juniper",
+            "expected": false
+          },
+          "assert_value": true
+        }
+      ],
+      "reward_basis": [
+        "DB",
+        "ENV_ASSERTION"
+      ]
+    },
+    "required_documents": [],
+    "annotations": {
+      "customer_id": "cus_juniper",
+      "flow": "collections",
+      "trigger": "ticket",
+      "disposition": "act",
+      "needs_human": false,
+      "data_condition": "stale_memory",
+      "adversarial": false
+    }
   }
 ]

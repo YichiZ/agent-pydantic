@@ -74,8 +74,8 @@ def db():
     return {name: table['data'] for name, table in json.loads((DB / 'db.json').read_text()).items()}
 
 
-def test_twenty_tasks_with_unique_ids(tasks):
-    assert [t['id'] for t in tasks] == [task_id(n) for n in range(1, 21)]
+def test_twenty_one_tasks_with_unique_ids(tasks):
+    assert [t['id'] for t in tasks] == [task_id(n) for n in range(1, 22)]
 
 
 def test_each_task_has_exactly_one_trigger(tasks):
@@ -98,8 +98,8 @@ def test_annotations_use_allowed_values(tasks):
 def test_splits(tasks):
     splits = json.loads((DB / 'split_tasks.json').read_text())
     assert splits == {
-        'base': [task_id(n) for n in range(1, 21)],
-        'never_events': [task_id(n) for n in (3, 7, 10, 11, 12, 14, 15, 16, 20)],
+        'base': [task_id(n) for n in range(1, 22)],
+        'never_events': [task_id(n) for n in (3, 7, 10, 11, 12, 14, 15, 16, 20, 21)],
         'cross_flow': [task_id(n) for n in (6, 11, 12)],
     }
     assert [task_id(n) for n in (6, 11, 12)] == [t['id'] for t in tasks if t['annotations']['flow'] == 'cross_flow']

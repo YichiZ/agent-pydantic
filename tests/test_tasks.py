@@ -67,6 +67,11 @@ WRONG: dict[str, list[list[Step]]] = {
     'task_16': [[ESCALATE]],  # asking a person about an event that needs nothing
     'task_20': [[('execute_approval', {'approval_id': 'apr_8001'})],
                 [propose('dsp_3002', '3120.00')]],
+    # The path seen live on event_11: the rejected claim reopened as a new dispute, then INV-1701 chased alone.
+    'task_21': [[('open_dispute', {'invoice_id': 'INV-1702', 'category': 'quality', 'amount': '1200.00',
+                                   'claim': '40 rolls tear on the wrapper; credit asked at $30.00 a roll.'}),
+                 reminder('con_810', ['INV-1701'], 'INV-1701 for $7,250.00 is overdue.')],
+                [reminder('con_810', ['INV-1701'], 'INV-1701 for $7,250.00 is overdue.')]],
 }
 WRONG_CASES = [(task_id, i) for task_id in NEVER_EVENTS for i in range(len(WRONG.get(task_id, [])))]
 

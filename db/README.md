@@ -34,16 +34,16 @@ Rules the data obeys:
 
 Each account holds one piece of actionable work, for one eval task, plus distractors that are
 plainly not actionable, such as an invoice that is not yet due. An agent run acts on one event,
-so a second piece of real work on the same account would make a correct run look wrong. The one
-exception is Fennick, whose dispute is used at three moments by three tasks. The task list is in
-`docs/ar-coworker-implementation.md`.
+so a second piece of real work on the same account would make a correct run look wrong. Two disputes
+are used at more than one moment: Fennick's by three tasks, and Juniper's by two, open and then
+rejected. The task list is in `docs/ar-coworker-implementation.md`.
 
 ## The eval set
 
 | File | What it holds |
 |---|---|
-| `tasks.json` | 20 tasks in tau2-bench's task schema, one reference path and env assertions each |
-| `split_tasks.json` | `base` (all 20), `never_events`, `cross_flow` |
+| `tasks.json` | 21 tasks in tau2-bench's task schema, one reference path and env assertions each |
+| `split_tasks.json` | `base` (all 21), `never_events`, `cross_flow` |
 | `policy/base.md` | the rules the agent reads on every run |
 | `policy/chat.md` | how to talk to a customer, added to the base for the two chat tasks |
 | `policy/collections.md`, `policy/cash_application.md`, `policy/disputes.md` | each flow's rules, which come with its capability when the agent loads it |
