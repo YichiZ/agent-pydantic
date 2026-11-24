@@ -7,9 +7,9 @@ the run stops), or denied with a reason the agent reads before it changes course
 over between runs except what is in the database, so one run hands work to a later one by what it
 writes there.
 
-The agent itself is not built yet. These flows are what the eval tasks (`db/tasks.json`) and the
-rules the agent reads ([`db/policy_solo.md`](../db/policy_solo.md)) specify; the tools and policy
-code they go through exist and are tested.
+These flows are what the eval tasks (`db/tasks.json`) and the rules the agent reads
+([`db/policy/`](../db/policy/)) specify. The base rules hold on every event; each flow's rules come
+with its capability, which the agent loads before it decides what the event needs.
 
 ## The five triggers
 
@@ -94,8 +94,8 @@ carried out. A rejected action is never carried out or proposed again.
 
 ![customer conversation flow](ar-flow-customer-conversation.svg)
 
-The chat is the agent's reply; it sends no separate message. The rules in
-[`db/policy.md`](../db/policy.md) apply as on any event.
+The chat is the agent's reply; it sends no separate message. The rules apply as on any event, with
+[`db/policy/chat.md`](../db/policy/chat.md) added to the base.
 
 | What the agent finds | What it does | End state | Task |
 |---|---|---|---|

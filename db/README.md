@@ -44,8 +44,9 @@ exception is Fennick, whose dispute is used at three moments by three tasks. The
 |---|---|
 | `tasks.json` | 20 tasks in tau2-bench's task schema, one reference path and env assertions each |
 | `split_tasks.json` | `base` (all 20), `never_events`, `cross_flow` |
-| `policy_solo.md` | the rules the agent reads on ticket (event) tasks |
-| `policy.md` | the same rules, plus how to talk to a customer, for the two chat tasks |
+| `policy/base.md` | the rules the agent reads on every run |
+| `policy/chat.md` | how to talk to a customer, added to the base for the two chat tasks |
+| `policy/collections.md`, `policy/cash_application.md`, `policy/disputes.md` | each flow's rules, which come with its capability when the agent loads it |
 | `documents/` | nine knowledge documents: evidence, agreements, policies and one distractor |
 
 A new row's id is its table prefix plus the largest numeric suffix in that table plus one, so a

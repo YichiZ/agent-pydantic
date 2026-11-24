@@ -60,7 +60,7 @@ scored on state and assertions like the rest.
 
 A run acts only on the event in its ticket. It reads the whole account, because the right amount
 and an open dispute can only be seen there, but other work on the account belongs to other
-events. `policy_solo.md` and `policy.md` both say so.
+events. The base rules, `db/policy/base.md`, say so.
 
 The database backs this up: each account holds one piece of actionable work, plus distractors
 that are plainly not actionable, such as an invoice that is not yet due. Without that, an agent
@@ -119,8 +119,9 @@ invoices.
 
 ### 2.5 The other files in the eval set
 
-- `db/policy_solo.md` and `db/policy.md`: the rules in prose, for ticket and chat tasks. They say
-  the same things as the policy code in section 5, in words the agent reads.
+- `db/policy/`: the rules in prose. `base.md` on every run, `chat.md` added for chat tasks, and
+  one file per capability that comes with it when loaded. They say the same things as the policy
+  code in section 5, in words the agent reads.
 - `db/documents/`: nine short JSON documents. Deduction reason codes (task 6), proof of delivery
   for INV-1502 (task 9), damage report for INV-1503 (task 10), proof of delivery for the Larkspur
   invoice (task 14), Ridgeway's and Garnet's pricing agreements, the credit approval policy, the
@@ -170,7 +171,7 @@ because it has not been compared with human labels.
 db/
   db.json            exists; gains rows for tasks 13 to 18
   README.md          exists
-  tasks.json  split_tasks.json  policy.md  policy_solo.md  documents/
+  tasks.json  split_tasks.json  policy/  documents/
 ar/
   data_model.py  ledger.py  policy.py  tools.py  agent.py
 evals/
@@ -345,7 +346,8 @@ passes only tasks 13, 16 and 17.
 - Model: Opus 5.5, in one constant.
 - One `Agent`; dependencies carry the store and the customer id; the output is a one-line summary
   and the actions taken.
-- Base instructions: the role, "amounts come from `amount_due`", and the policy text.
+- Base instructions: the role and the base rules (`db/policy/base.md`, plus `chat.md` in a chat).
+  Each capability carries its flow's rules, which reach the model only when it loads the capability.
 - Three capabilities loaded on demand, and a base set that is always present. The pattern is the
   bank agent's, in `bank_support.py` at commit `18b9d38`.
 

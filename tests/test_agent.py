@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +22,9 @@ from ar.store import Store
 
 DB_DIR = Path(__file__).resolve().parent.parent / 'db'
 TASKS = {task['id']: task for task in json.loads((DB_DIR / 'tasks.json').read_text())}
+ROW_IDS = {row_id for name, table in json.loads((DB_DIR / 'db.json').read_text()).items()
+           if name in ('invoices', 'payments', 'disputes', 'approvals', 'credits', 'customers', 'contacts')
+           for row_id in table['data']}
 BASE_TOOLS = {name for name, spec in TOOLS.items() if spec.capability == 'base'}
 CAPABILITY_IDS = ('collections', 'cash-application', 'disputes')
 DONE = {'summary': 'Done.', 'actions': []}
@@ -88,15 +92,12 @@ def test_base_tools_are_offered_first_and_all_17_once_every_capability_is_loaded
 
 
 def test_no_tool_description_names_a_row_in_the_database() -> None:
-    raw = json.loads((DB_DIR / 'db.json').read_text())
-    ids = {row_id for table in ('invoices', 'payments', 'disputes', 'approvals', 'credits', 'customers', 'contacts')
-           for row_id in raw[table]['data']}
     described = {Tool(wrapper).tool_def.name: json.dumps([Tool(wrapper).tool_def.description,
                                                           Tool(wrapper).tool_def.parameters_json_schema])
                  for wrapper in WRAPPERS}
     described |= {capability_id: line for capability_id, line in CAPABILITY_CATALOG.values()}
-    assert {name: sorted(i for i in ids if i in text) for name, text in described.items()
-            if any(i in text for i in ids)} == {}
+    assert {name: sorted(i for i in ROW_IDS if i in text) for name, text in described.items()
+            if any(i in text for i in ROW_IDS)} == {}
 
 
 def test_retrieval_none_hides_search_knowledge(store: Store) -> None:
@@ -123,13 +124,57 @@ def test_notes_are_data_from_get_account_state_marked_possibly_stale(store: Stor
     assert all('stale' in note['caution'] for note in notes)
 
 
-def test_policy_chooses_the_rulebook(store: Store) -> None:
+# The rules: the base on every run, a flow's rules only once its capability is loaded.
+
+BASE_RULE = 'Every amount comes from the ledger'
+LOAD_FIRST = 'load the capability for the event before you decide'
+FLOW_RULES = {'collections': 'Reminders go out only on an aging check',
+              'cash-application': "A parent may pay its subsidiaries' invoices",
+              'disputes': 'Never credit an invoice that has no open dispute'}
+CHAT_GUIDANCE = '## Talking with a customer'
+
+
+def received(script: Script, request: int) -> str:
+    """All the text the model was sent on one request: its instructions and every text part of the messages."""
+    texts = [part.content for message in script.seen[request] for part in message.parts
+             if isinstance(getattr(part, 'content', None), str)]
+    return '\n'.join([script.instructions[request], *texts])
+
+
+def test_with_nothing_loaded_the_model_gets_the_base_rules_and_no_flow_rules(store: Store) -> None:
+    script = Script()
+    run(script, store, 'cus_pinecrest')
+    text = received(script, 0)
+    assert BASE_RULE in text and LOAD_FIRST in text
+    assert [rule for rule in FLOW_RULES.values() if rule in text] == []
+
+
+@pytest.mark.parametrize('capability_id', CAPABILITY_IDS)
+def test_loading_a_capability_brings_its_rules_and_no_others(store: Store, capability_id: str) -> None:
+    script = Script(load(capability_id))
+    run(script, store, 'cus_pinecrest')
+    text = received(script, 1)
+    assert BASE_RULE in text
+    assert {name for name, rule in FLOW_RULES.items() if rule in text} == {capability_id}
+
+
+def test_policy_chat_adds_the_chat_guidance_to_the_base(store: Store) -> None:
     solo, chat = Script(), Script()
     run(solo, store, 'cus_hollis', policy='solo')
     run(chat, store, 'cus_hollis', policy='chat')
-    assert (DB_DIR / 'policy_solo.md').read_text() in solo.instructions[0]
-    assert (DB_DIR / 'policy.md').read_text() in chat.instructions[0]
-    assert '## Talking with a customer' not in solo.instructions[0]
+    assert BASE_RULE in solo.instructions[0] and BASE_RULE in chat.instructions[0]
+    assert CHAT_GUIDANCE in chat.instructions[0] and CHAT_GUIDANCE not in solo.instructions[0]
+
+
+def test_no_rule_names_a_task_a_row_or_a_customer() -> None:
+    raw = json.loads((DB_DIR / 'db.json').read_text())
+    names = {row['name'] for row in raw['customers']['data'].values()}
+    files = sorted((DB_DIR / 'policy').glob('*.md'))
+    assert [path.stem for path in files] == ['base', 'cash_application', 'chat', 'collections', 'disputes']
+    for path in files:
+        text = path.read_text()
+        assert re.search(r'task[ _]?\d', text, re.IGNORECASE) is None, path.name
+        assert sorted(found for found in ROW_IDS | names if found in text) == [], path.name
 
 
 def test_golden_retrieval_puts_the_documents_in_the_instructions(store: Store) -> None:

@@ -69,7 +69,8 @@ Each event starts one run for one account: an aging check, a payment received, a
 review, a decision on an approval, or a chat with someone at the customer. The agent proposes
 writes and policy code decides whether each one happens; runs hand work to each other only
 through the database. [`docs/ar-flows.md`](docs/ar-flows.md) has a diagram for every flow and its
-endings, each tied to an eval task. They describe what the tasks specify; the agent is not built yet.
+endings, each tied to an eval task. The agent reads base rules on every run and loads each flow's
+rules with its capability ([`db/policy/`](db/policy/)).
 
 ![How the flows connect](docs/ar-flow-overview.svg)
 

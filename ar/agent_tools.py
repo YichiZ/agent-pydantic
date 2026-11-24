@@ -1,5 +1,6 @@
 """The agent's 17 tools: thin wrappers over the plain tools in `ar.environment.TOOLS`, grouped as in the plan's
-Piece F table. The base tools are always offered; the rest come in capabilities the model loads on demand.
+Piece F table. The base tools are always offered; the rest come in capabilities the model loads on demand,
+each with its flow's rules from `db/policy/`.
 
 A wrapper passes the run's store and customer id. A refused call (a policy denial, a bad argument, an unknown id)
 comes back to the model as a retry carrying the reason; a write held for a person is a normal result.
@@ -9,6 +10,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
 from pydantic_ai import Capability, ModelRetry, RunContext, Tool
@@ -236,14 +238,23 @@ WRAPPERS: Sequence[Callable[..., Any]] = (
 )
 
 CAPABILITY_CATALOG: dict[CapabilityName, tuple[str, str]] = {  # capability in TOOLS -> (capability id, catalog line)
-    'collections': ('collections', 'Payment reminders and promises to pay: send_message, log_promise. '
-                                   'Load for an aging check or a customer who promises to pay.'),
-    'cash_application': ('cash-application', 'Applying received payments to invoices: apply_payment. '
-                                             'Load for a payment received.'),
-    'disputes': ('disputes', 'Disputes, deductions and credits: open_dispute, pause_collections, propose_credit, '
-                             'reject_dispute. Load for a short payment, a contested invoice, a dispute review or a '
-                             "reviewer's decision on a credit."),
+    'collections': ('collections', 'Rules and tools for payment reminders and promises to pay (send_message, '
+                                   'log_promise). Load for an aging check, or when a customer promises to pay, '
+                                   'in a chat too.'),
+    'cash_application': ('cash-application', 'Rules and tools for applying a received payment to invoices '
+                                             '(apply_payment). Load for a payment received, a short payment '
+                                             'included; its rules say when disputes is needed as well.'),
+    'disputes': ('disputes', 'Rules and tools for disputes, deductions and credits (open_dispute, pause_collections, '
+                             'propose_credit, reject_dispute). Load for a dispute review, a reviewer\'s decision on '
+                             'a credit, a customer who contests a charge (in a chat too), or a deduction taken in '
+                             'a short payment.'),
 }
+RULES_DIR = Path(__file__).resolve().parent.parent / 'db' / 'policy'
+
+
+def rules(name: str) -> str:
+    """One file of the rulebook in `db/policy/`: 'base', 'chat', or a capability's own rules."""
+    return (RULES_DIR / f'{name}.md').read_text()
 
 
 def _offer_search(ctx: RunContext[AgentDeps], tool_def: ToolDefinition) -> ToolDefinition | None:
@@ -258,5 +269,5 @@ def _tools(capability: CapabilityName) -> list[Tool[AgentDeps]]:
 
 BASE_TOOLS = _tools('base')
 CAPABILITIES = [Capability[AgentDeps](id=capability_id, description=description, defer_loading=True,
-                                      tools=_tools(name))
+                                      instructions=rules(name), tools=_tools(name))
                 for name, (capability_id, description) in CAPABILITY_CATALOG.items()]
