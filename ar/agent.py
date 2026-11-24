@@ -23,8 +23,8 @@ TOOL_RETRIES = 3  # refusals a run may hit per tool before it fails
 OUTPUT_TOOL = 'final_result'
 ROLE = ('You handle one accounts receivable event for one customer account, through your tools. '
         'The rules below, and those each capability brings when you load it, are your policy; follow them exactly.')
-RULEBOOK: Mapping[PolicyKind, str] = {'solo': f'{ROLE}\n\n{rules("base")}',
-                                      'chat': f'{ROLE}\n\n{rules("base")}\n\n{rules("chat")}'}
+_SOLO = f'{ROLE}\n\n{rules("base")}'
+RULEBOOK: Mapping[PolicyKind, str] = {'solo': _SOLO, 'chat': f'{_SOLO}\n\n{rules("chat")}'}
 
 
 class TurnOutput(BaseModel):

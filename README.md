@@ -15,7 +15,7 @@ The agent, the eval runner and a saved baseline exist.
   the agent (one Pydantic AI orchestrator on Opus 5.5 with three capabilities loaded on demand), and the
   eval runner.
 - Baseline (`evals/ar_baseline.json`): all 20 tasks pass on each of 4 trials, 80 runs in all, at
-  about $0.10 and 7 seconds per run.
+  about $0.09 and 6.4 seconds per run.
 - What that does and does not show: the agent follows the rulebook reliably on these scenarios. A
   perfect score also means the set no longer separates a good agent from a better one. Harder
   tasks are the next step; see "not covered yet" in [the flows page](docs/ar-flows.md).
@@ -50,7 +50,7 @@ uv run pytest -m e2e                                   # two live agent tests
 with its arguments and outcome (a result, `DENIED` by a rule, or `HELD` for a person), the agent's reply, the rows
 it wrote, and, for a failed trial, the failed assertions and the diff against the target.
 
-One task costs about $0.10 on Opus 5.5.
+One task costs about $0.09 on Opus 5.5.
 
 ## The eval set
 
