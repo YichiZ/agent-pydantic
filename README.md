@@ -39,9 +39,20 @@ Details are in [`db/README.md`](db/README.md) and section 2 of the
 [implementation plan](docs/ar-coworker-implementation.md). The design is in
 [`docs/ar-coworker-design.md`](docs/ar-coworker-design.md).
 
+## Flows
+
+Each event starts one run for one account: an aging check, a payment received, a dispute to
+review, a decision on an approval, or a chat with someone at the customer. The agent proposes
+writes and policy code decides whether each one happens; runs hand work to each other only
+through the database. [`docs/ar-flows.md`](docs/ar-flows.md) has a diagram for every flow and its
+endings, each tied to an eval task. They describe what the tasks specify; the agent is not built yet.
+
+![How the flows connect](docs/ar-flow-overview.svg)
+
 ## Layout
 
-- `docs/`: design, its diagram, the implementation plan, and a walk-through of one event
+- `docs/`: design, its diagram, the implementation plan, the flows of every event with their
+  diagrams, and a walk-through of one event
 - `db/`: database, tasks, splits, policy text and knowledge documents
 - `ar/`: data model, ledger, policy rules, tools, and the assertions the evals use
 - `evals/scoreboard.py`: pass rate, cost and latency against a baseline
