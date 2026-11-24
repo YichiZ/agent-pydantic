@@ -5,6 +5,8 @@
     uv run python -m evals.run_event --customer cus_garnet --event "Event: aging_check. Account: Garnet Tooling (cus_garnet)."
     uv run python -m evals.run_event event_20 --interactive          # you type the customer's lines
     uv run python -m evals.run_event --customer cus_corvid --chat --interactive
+    uv run python -m evals.run_event event_06 --thinking  # the model reasons first; the trace shows it as REASONING
+    uv run python -m evals.run_event event_06 --color never  # colour is on for a terminal (auto); always | never
 
 Each event runs on a fresh copy of db/db.json after its setup; nothing is written to disk. Exits 2 on bad arguments,
 a malformed event file or a refused setup, else 0: an agent that crashes on one event is reported and the next runs.
@@ -12,12 +14,15 @@ a malformed event file or a refused setup, else 0: an agent that crashes on one 
 
 import argparse
 import asyncio
+import json
+import os
 import sys
+import textwrap
 from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
-from typing import Literal, Self
+from typing import Any, Literal, Self
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
@@ -30,12 +35,18 @@ from ar.store import Store
 from evals.ar_runner import STOP, ClerkFn, Customer, Transcript, run_agent, setup_store
 from evals.ar_tasks import DB_DIR, DB_PATH, InitialState, Step, UserScenario
 from evals.clerk import haiku_clerk
-from evals.trace import LABEL, call_text, labelled, totals, trace_lines
+from evals.trace import totals, trace_lines
+from evals.trace_color import COLOR_MODES, use_color
 
 EVENTS_DIR = DB_DIR / 'events'
 CHAT = 'customer_message'
 AD_HOC = 'ad hoc'
 ENDS = ('', 'quit')  # typed in an interactive chat, either ends it
+WIDTH = 100  # the intro's text is wrapped at this many characters
+LABEL = 8  # the intro's label column: 'context ', 'setup   '
+LONG_TEXT = 32  # in a setup step, a string argument longer than this is shown as a short preview
+PREVIEW = 16  # characters of that string shown
+VALUE_WIDTH = 60  # any other argument value of a setup step is cut to this
 
 type Read = Callable[[str], str]  # `input`, or a stand-in in tests
 
@@ -97,7 +108,8 @@ def main(argv: Sequence[str] | None = None, *, agent_fn: AgentFn = run_turn, cle
     if args.list:
         print('\n'.join(list_lines(events.values(), db)))
         return 0
-    asyncio.run(run_all(jobs, agent_fn))
+    color = use_color(args.color, isatty=sys.stdout.isatty(), environ=os.environ)
+    asyncio.run(run_all(jobs, agent_fn, thinking=args.thinking, color=color))
     return 0
 
 
@@ -125,6 +137,10 @@ def parse_args(argv: Sequence[str] | None, events: Mapping[str, Event], customer
     parser.add_argument('--event', metavar='TEXT', help='with --customer: the event text, or the first line of a chat')
     parser.add_argument('--chat', action='store_true', help='with --customer: a conversation; needs --interactive')
     parser.add_argument('--interactive', action='store_true', help="type the customer's lines yourself")
+    parser.add_argument('--thinking', action='store_true',
+                        help='the model reasons before it answers; the trace shows it as REASONING')
+    parser.add_argument('--color', choices=COLOR_MODES, default='auto',
+                        help='colour the trace: auto (on a terminal unless NO_COLOR is set), always or never')
     args = parser.parse_args(argv)
     if problem := _problem(args, events, customers):
         parser.error(problem)
@@ -196,13 +212,38 @@ def typed(read: Read, first: str | None = None) -> Customer:
     return say
 
 
-async def run_all(jobs: Sequence[Job], agent_fn: AgentFn) -> None:
-    """Each job in turn: its intro before the agent starts, then the trace and a footer. A crash ends only its job."""
+async def run_all(jobs: Sequence[Job], agent_fn: AgentFn, *, thinking: bool = False, color: bool = False) -> None:
+    """Each job in turn: its intro before the agent starts, then the trace (coloured with `color`) and a footer.
+    `thinking` goes to every turn. A crash ends only its job."""
     for number, job in enumerate(jobs):
         print('\n'.join([*([''] if number else []), *job.intro]), flush=True)
-        ran = await run_agent(job.store, job.customer_id, agent_fn, ticket=job.ticket, customer=job.customer)
-        print('\n'.join([*trace_lines(ran.trace, ran.error),
+        ran = await run_agent(job.store, job.customer_id, agent_fn, ticket=job.ticket, customer=job.customer,
+                              thinking=thinking)
+        print('\n'.join([*trace_lines(ran.trace, ran.error, color=color),
                          f'{job.name}  {totals(ran.tool_calls, ran.cost_usd, ran.seconds)}']), flush=True)
+
+
+def labelled(label: str, items: Sequence[str]) -> list[str]:
+    """Each item in full, wrapped; the label on the first line only, everything else aligned under the text."""
+    return [line for i, item in enumerate(items) for line in _wrapped(f'{"" if i else label:<{LABEL}}', item)]
+
+
+def _wrapped(prefix: str, text: str) -> list[str]:
+    rows = [row for line in text.splitlines() or [''] for row in textwrap.wrap(line, WIDTH - len(prefix)) or ['']]
+    return [f'{" " * len(prefix) if i else prefix}{row}' for i, row in enumerate(rows)]
+
+
+def call_text(name: str, args: Mapping[str, Any]) -> str:
+    """A setup step on one line, `decide_approval(approval_id="apr_8001")`: a long text as a short preview, any
+    other long value cut. Only the intro is shortened; the trace shows every call in full."""
+    return f'{name}({", ".join(f"{key}={_inline(value)}" for key, value in args.items())})'
+
+
+def _inline(value: Any) -> str:
+    if isinstance(value, str) and len(value) > LONG_TEXT:
+        return f'"{" ".join(value.split())[:PREVIEW]}..."'
+    text = json.dumps(value, ensure_ascii=False, default=str)
+    return text if len(text) <= VALUE_WIDTH else f'{text[:VALUE_WIDTH - 3]}...'
 
 
 def list_lines(events: Iterable[Event], db: ArDb) -> list[str]:

@@ -11,6 +11,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent, RunContext, ToolOutput
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
+from pydantic_ai.models.anthropic import AnthropicModelSettings
 from pydantic_ai.usage import UsageLimits
 
 from ar.agent_tools import BASE_TOOLS, CAPABILITIES, AgentDeps, rules
@@ -21,6 +22,9 @@ MODEL = 'anthropic:claude-opus-5-5'
 MAX_REQUESTS = 25  # one run may not loop forever: the 26th model request raises UsageLimitExceeded
 TOOL_RETRIES = 3  # refusals a run may hit per tool before it fails
 OUTPUT_TOOL = 'final_result'
+# On Opus 5.5 the unified `thinking=True` setting returns thinking blocks with empty content; only display
+# 'summarized' returns the text.
+THINKING_SETTINGS: AnthropicModelSettings = {'anthropic_thinking': {'type': 'adaptive', 'display': 'summarized'}}
 ROLE = ('You handle one accounts receivable event for one customer account, through your tools. '
         'The rules below, and those each capability brings when you load it, are your policy; follow them exactly.')
 _SOLO = f'{ROLE}\n\n{rules("base")}'
@@ -77,14 +81,17 @@ async def run_turn(
     retrieval: Retrieval = 'search',
     golden_documents: Sequence[str] = (),
     history: Any | None = None,
+    thinking: bool = False,
 ) -> AgentTurn:
     """Run the agent once on `prompt` for `customer_id`; pass `history` back to continue the same conversation.
+    With `thinking`, the model reasons first (`THINKING_SETTINGS`) and its summarized reasoning is in the history.
 
     Raises `UnknownCustomerError` before any model call, and `UsageLimitExceeded` after `MAX_REQUESTS` requests.
     """
     store.db.customer(customer_id)
     deps = AgentDeps(store, customer_id, policy, retrieval, tuple(golden_documents))
     result = await agent.run(prompt, deps=deps, message_history=history,
+                             model_settings=THINKING_SETTINGS if thinking else None,
                              usage_limits=UsageLimits(request_limit=MAX_REQUESTS))
     cost = result.usage.cost  # None when the model cannot be priced
     return AgentTurn(text=result.output.summary, cost_usd=float(cost) if cost is not None else 0.0,

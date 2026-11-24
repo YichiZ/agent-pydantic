@@ -5,7 +5,9 @@ import pytest
 from scripted_agents import noop_agent, one_line_clerk, raising_agent
 
 from evals import ar_evals, ar_runner
+from evals.ar_evals import BASELINE_PATH, THINKING_BASELINE_PATH
 from evals.ar_tasks import TaskFileError
+from evals.trace_color import CYAN, RESET
 
 # What the command printed before --trace existed, for these tasks with a stopped clock; it must not change.
 UNTRACED = '''\
@@ -37,6 +39,7 @@ def scripted(monkeypatch, tmp_path):
     monkeypatch.setattr(ar_evals, 'run_turn', noop_agent)
     monkeypatch.setattr(ar_evals, 'haiku_clerk', one_line_clerk)
     monkeypatch.setattr(ar_evals, 'BASELINE_PATH', tmp_path / 'ar_baseline.json')
+    monkeypatch.setattr(ar_evals, 'THINKING_BASELINE_PATH', tmp_path / 'ar_baseline_thinking.json')
     monkeypatch.setattr(ar_evals, 'load_dotenv', lambda: None)  # tests never read a real .env
 
 
@@ -62,6 +65,12 @@ def test_without_trace_the_output_is_exactly_what_it_was(monkeypatch, capsys):
     assert capsys.readouterr().out == UNTRACED
 
 
+def test_colour_without_trace_changes_nothing(monkeypatch, capsys):
+    monkeypatch.setattr(ar_runner, 'time', SimpleNamespace(perf_counter=lambda: 0.0))
+    assert ar_evals.main(['--task', 'task_13', 'task_15', 'task_02', '--trials', '2', '--color', 'always']) == 1
+    assert capsys.readouterr().out == UNTRACED
+
+
 def test_trace_prints_every_trial_under_its_task_line(capsys):
     assert ar_evals.main(['--task', 'task_13', 'task_17', '--trials', '2', '--trace']) == 0
     lines = capsys.readouterr().out.splitlines()
@@ -71,26 +80,61 @@ def test_trace_prints_every_trial_under_its_task_line(capsys):
     assert [lines[i][:15] for i in trials] == ['  trial 1  PASS', '  trial 2  PASS'] * 2
     grid = lines.index('2 tasks, 4 trials; columns are pass^1 and pass^2')
     assert tasks[0] < trials[0] < trials[1] < tasks[1] < trials[2] < trials[3] < grid
-    ticket = 'event   Event: aging_check. Account: Kestrel Bakery Supply (cus_kestrel).'
-    assert lines[trials[0] + 1] == f'    {ticket}'
-    assert lines[trials[0] + 2:trials[0] + 5] == ['    no trace available for this turn', '    final   Nothing to do.',
-                                                  '    wrote   nothing']
+    assert lines[trials[0] + 1:trials[0] + 8] == [
+        '    USER', '      Event: aging_check. Account: Kestrel Bakery Supply (cus_kestrel).',
+        '    no trace available for this turn', '    ASSISTANT', '      Nothing to do.', '    WROTE', '      nothing']
 
 
 def test_trace_keeps_a_failed_trials_assertions_and_diff_with_it(capsys):
     assert ar_evals.main(['--task', 'task_15', '--trace']) == 1
     out = capsys.readouterr().out
     trial = out[out.index('  trial 1  FAIL'):out.index('\n\n')]
-    assert '    failed  assert_balance(invoice_id=INV-2001, expected=5000.00)' in trial
-    assert '            assert_application_count(payment_id=pay_2005, expected=1)' in trial
-    assert '    diff    applications -pay_2005:INV-2001\n            payments ~pay_2005 (status)' in trial
+    assert '    FAILED\n      assert_balance(invoice_id=INV-2001, expected=5000.00)\n' in trial
+    assert '      assert_application_count(payment_id=pay_2005, expected=1)\n' in trial
+    assert '    DIFF\n      applications -pay_2005:INV-2001\n      payments ~pay_2005 (status)' in trial
     assert out.startswith('task_15  0/1  failed: ')  # the task line is unchanged
 
 
 def test_trace_shows_a_crash(monkeypatch, capsys):
     monkeypatch.setattr(ar_evals, 'run_turn', raising_agent)
     assert ar_evals.main(['--task', 'task_13', '--trace']) == 0
-    assert '    error   RuntimeError: model unavailable' in capsys.readouterr().out
+    assert '    ERROR\n      RuntimeError: model unavailable\n' in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(('argv', 'no_color', 'coloured'), [
+    (['--color', 'always'], '1', True),
+    (['--color', 'never'], None, False),
+    (['--color', 'auto'], None, False),  # captured output is not a terminal
+    ([], '1', False),
+])
+def test_trace_is_coloured_only_when_asked_or_on_a_terminal(monkeypatch, capsys, argv, no_color, coloured):
+    if no_color is not None:
+        monkeypatch.setenv('NO_COLOR', no_color)
+    assert ar_evals.main(['--task', 'task_13', '--trace', *argv]) == 0
+    out = capsys.readouterr().out
+    assert ('\x1b[' in out) is coloured
+    assert (f'    {CYAN}USER{RESET}' in out.splitlines()) is coloured
+
+
+def test_thinking_reaches_the_agent_and_has_its_own_baseline(monkeypatch, capsys):
+    seen = []
+
+    async def agent(store, customer_id, prompt, **options):
+        seen.append(options['thinking'])
+        return await noop_agent(store, customer_id, prompt, **options)
+
+    monkeypatch.setattr(ar_evals, 'run_turn', agent)
+    assert THINKING_BASELINE_PATH == BASELINE_PATH.with_name('ar_baseline_thinking.json')  # the real paths
+    assert ar_evals.main(['--task', 'task_13', '--thinking']) == 0
+    assert 'No baseline yet; run with --save to create ar_baseline_thinking.json.' in capsys.readouterr().out
+    assert ar_evals.main(['--task', 'task_13', '--thinking', '--save']) == 0
+    assert f'Saved baseline to {ar_evals.THINKING_BASELINE_PATH}.' in capsys.readouterr().out
+    assert ar_evals.THINKING_BASELINE_PATH.is_file() and not ar_evals.BASELINE_PATH.exists()
+    assert ar_evals.main(['--task', 'task_13', '--thinking']) == 0
+    assert 'overall.pass_1' in capsys.readouterr().out
+    assert ar_evals.main(['--task', 'task_13']) == 0
+    assert 'No baseline yet; run with --save to create ar_baseline.json.' in capsys.readouterr().out
+    assert seen == [True, True, True, False]
 
 
 def test_missed_human_in_the_loop_exits_one(capsys):

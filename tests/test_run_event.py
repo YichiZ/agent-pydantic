@@ -26,9 +26,11 @@ class Recorder:
 
     def __init__(self) -> None:
         self.calls: list[tuple[str, str, str]] = []
+        self.thinking: list[bool] = []
 
     async def __call__(self, store, customer_id, prompt, **options: Any) -> AgentTurn:
         self.calls.append((customer_id, prompt, options['policy']))
+        self.thinking.append(options['thinking'])
         return AgentTurn(text=f'reply {len(self.calls)}', cost_usd=0.25, tool_calls=1, history=None)
 
     @property
@@ -82,8 +84,8 @@ def test_an_event_prints_header_notes_setup_trace_and_footer_in_that_order(capsy
     assert code == 0
     starts = ['event_11  aging_check  Juniper Packaging (cus_juniper)', 'context The quality dispute on INV-1702',
               'open q  One message covering both invoices', 'rules   settle it', 'setup   reject_dispute(',
-              'event   Event: aging_check. Account: Juniper Packaging (cus_juniper).',
-              'no trace available for this turn', 'final   Escalated.', 'wrote   action_log +1 row']
+              'USER', '  Event: aging_check. Account: Juniper Packaging (cus_juniper).',
+              'no trace available for this turn', 'ASSISTANT', '  Escalated.', 'WROTE', '  action_log +1 row']
     found = [next(i for i, line in enumerate(lines) if line.startswith(start)) for start in starts]
     assert found == sorted(found) and found[0] == 0
     assert footer('event_11', '1 tool call', '0.0200').fullmatch(lines[-1])
@@ -110,8 +112,8 @@ def test_the_setup_is_replayed_before_the_agent_runs_and_wrote_shows_only_the_ag
     before = DB_PATH.read_bytes()
     _, lines = run(['event_11'], capsys, agent_fn=agent)
     assert seen == ['resolved_invalid']  # the setup's rejection was on the store the agent saw
-    wrote = lines.index('wrote   action_log +1 row')
-    assert lines[wrote + 1].startswith('event_11  ')  # no disputes or invoices: those were the setup's
+    wrote = lines.index('WROTE')
+    assert lines[wrote + 1] == '  action_log +1 row' and lines[wrote + 2].startswith('event_11  ')  # no disputes or invoices: those were the setup's
     assert DB_PATH.read_bytes() == before  # nothing written to disk
 
 
@@ -121,7 +123,7 @@ def test_each_setup_step_is_one_line(capsys):
     assert lines[setup].startswith('setup   send_message(contact_id="con_819", channel="email", ')
     assert lines[setup + 1] == ('        decide_approval(approval_id="apr_8001", decision="approved", '
                                 'decided_by="ar_lead", note="Fine to send.")')
-    assert lines[setup + 2].startswith('event   Event: approval_decided.')
+    assert lines[setup + 2] == 'USER' and lines[setup + 3].startswith('  Event: approval_decided.')
 
 
 def test_a_chat_event_shows_the_turns_in_order_and_stops_when_the_clerk_says_stop(capsys):
@@ -136,8 +138,9 @@ def test_a_chat_event_shows_the_turns_in_order_and_stops_when_the_clerk_says_sto
     _, lines = run(['event_18'], capsys, agent_fn=agent, clerk=clerk)
     assert agent.calls == [('cus_brightwell', said[0], 'chat'), ('cus_brightwell', said[1], 'chat')]
     assert len(scenarios) == 3 and scenarios[0].startswith('Priya Raman')
-    assert in_order(lines, ['event_18  customer_message  Brightwell Fabrication (cus_brightwell)', f'clerk   {said[0]}',
-                            'agent   reply 1', f'clerk   {said[1]}', 'agent   reply 2', 'wrote   nothing'])
+    assert in_order(lines, ['event_18  customer_message  Brightwell Fabrication (cus_brightwell)', 'USER', f'  {said[0]}',
+                            'ASSISTANT', '  reply 1', 'USER', f'  {said[1]}', 'ASSISTANT', '  reply 2',
+                            'WROTE', '  nothing'])
     assert footer('event_18', '2 tool calls', '0.5000').fullmatch(lines[-1])
 
 
@@ -155,8 +158,8 @@ def test_interactive_feeds_typed_lines_to_the_agent_and_ends_on_an_empty_line(ca
     code, lines = run(['event_20', '--interactive'], capsys, agent_fn=agent, clerk=no_clerk, read=read)
     assert code == 0 and agent.prompts == ['What do we owe?', 'Thank you.']
     assert read.prompts == ['you> '] * 3
-    assert in_order(lines, ['agent> reply 1', 'agent> reply 2', 'clerk   What do we owe?', 'agent   reply 1',
-                            'clerk   Thank you.', 'agent   reply 2', 'wrote   nothing'])
+    assert in_order(lines, ['agent> reply 1', 'agent> reply 2', 'USER', '  What do we owe?', 'ASSISTANT', '  reply 1',
+                            'USER', '  Thank you.', 'ASSISTANT', '  reply 2', 'WROTE', '  nothing'])
 
 
 @pytest.mark.parametrize('end', ['quit', '  quit  ', EOFError])
@@ -175,7 +178,7 @@ def test_an_ad_hoc_event_runs_on_any_account(capsys):
     agent = Recorder()
     code, lines = run(['--customer', 'cus_garnet', '--event', GARNET], capsys, agent_fn=agent)
     assert code == 0 and agent.calls == [('cus_garnet', GARNET, 'solo')]
-    assert lines[:2] == ['ad hoc  Garnet Tooling (cus_garnet)', f'event   {GARNET}']
+    assert lines[:3] == ['ad hoc  Garnet Tooling (cus_garnet)', 'USER', f'  {GARNET}']
     assert footer('ad hoc', '1 tool call', '0.2500').fullmatch(lines[-1])
 
 
@@ -225,11 +228,11 @@ def test_a_crash_is_shown_with_the_trace_and_the_next_event_still_runs(capsys):
 
     code, lines = run(['event_05', 'event_06'], capsys, agent_fn=agent)
     assert code == 0
-    assert in_order(lines, ['event   Event: aging_check. Account: Delmar Foods (cus_delmar).',
-                            'error   RuntimeError: model unavailable', 'wrote   nothing'])
+    assert in_order(lines, ['USER', '  Event: aging_check. Account: Delmar Foods (cus_delmar).',
+                            'ERROR', '  RuntimeError: model unavailable', 'WROTE', '  nothing'])
     crashed = next(i for i, line in enumerate(lines) if footer('event_05', '0 tool calls', '0.0000').fullmatch(line))
     assert lines[crashed + 1:crashed + 3] == ['', 'event_06  aging_check  Ridgeway Clinics (cus_ridgeway)']
-    assert 'final   Nothing to do.' in lines[crashed:]
+    assert in_order(lines[crashed:], ['ASSISTANT', '  Nothing to do.'])
 
 
 def test_all_runs_every_event_in_order(capsys):
@@ -287,3 +290,36 @@ def test_the_command_loads_dotenv_before_it_runs(monkeypatch):
     monkeypatch.setattr(run_event, 'load_dotenv', lambda: calls.append('loaded'))
     assert run_event.main(['--list']) == 0
     assert calls == ['loaded']
+
+
+def test_thinking_goes_to_every_turn_and_is_off_by_default(capsys):
+    off, on = Recorder(), Recorder()
+    run(['event_06'], capsys, agent_fn=off)
+    run(['event_06', '--thinking'], capsys, agent_fn=on)
+    assert off.thinking == [False] and on.thinking == [True]
+
+
+@pytest.mark.parametrize(('argv', 'environ', 'coloured'), [
+    (['--color', 'always'], {}, True),
+    (['--color', 'never'], {}, False),
+    ([], {}, False),  # auto: the captured stdout is not a terminal
+    (['--color', 'always'], {'NO_COLOR': '1'}, True),  # an explicit flag wins
+])
+def test_color_paints_the_trace_only_when_asked(argv, environ, coloured, monkeypatch, capsys):
+    monkeypatch.delenv('NO_COLOR', raising=False)
+    for name, value in environ.items():
+        monkeypatch.setenv(name, value)
+    _, lines = run(['event_06', *argv], capsys, agent_fn=noop_agent)
+    assert ('\033[36mUSER\033[0m' in lines) is coloured
+    assert any('\033[' in line for line in lines) is coloured
+    if not coloured:
+        assert 'USER' in lines
+
+
+def test_auto_colours_a_terminal_unless_no_color_is_set(monkeypatch, capsys):
+    monkeypatch.setattr(run_event.sys.stdout, 'isatty', lambda: True, raising=False)
+    monkeypatch.delenv('NO_COLOR', raising=False)
+    assert '\033[36mUSER\033[0m' in run(['event_06'], capsys, agent_fn=noop_agent)[1]
+    monkeypatch.setenv('NO_COLOR', '1')
+    assert 'USER' in run(['event_06'], capsys, agent_fn=noop_agent)[1]
+

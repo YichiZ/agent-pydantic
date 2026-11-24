@@ -1,64 +1,65 @@
-"""The --trace view of one trial: what the agent did, step by step, as plain lines for a terminal. `evals.run_event`
-prints the same view for an event.
+"""The --trace view of one trial: the conversation the agent had, in order, as labelled blocks for a terminal.
+`evals.run_event` prints the same view for an event.
 
-Pure functions from a `TrialResult` and its `TrialTrace` to lines. A turn's history is read as pydantic-ai
-messages: each tool call the model made, paired by call id with its return. In pydantic-ai 2.71 a refused call
-comes back as a tool return with outcome 'retried' whose text is the refusal; a policy refusal reads
-"Denied by <rule>: <reason>" (`ar.errors.PolicyDenied`). A write held for a person is a normal return whose
-`WriteResult` status is 'held_for_approval'. A history that is not a list of pydantic-ai messages (a scripted
-agent's) gets one line saying no trace is available for that turn.
+Pure functions from a `TrialResult` and its `TrialTrace` to `Line`s, drawn by `evals.trace_color.render`. A turn's
+history is read as pydantic-ai messages from the request that carries the turn's prompt: each response's reasoning,
+text and tool calls in part order, then the next request's tool results. In pydantic-ai 2.71 a refused call comes
+back as a tool return with outcome 'retried' whose text is the refusal; a policy refusal reads "Denied by <rule>:
+<reason>" (`ar.errors.PolicyDenied`). A write held for a person is a normal return whose `WriteResult` status is
+'held_for_approval'. A response with no tool call is answered by a `RetryFeedbackPart` asking for one. The
+final-output call and its return are left out when it succeeded: the turn's reply shows it. A history that is not a
+list of pydantic-ai messages (a scripted agent's) gets one line saying no trace is available for that turn.
+Nothing is cut: arguments and results are shown whole.
 """
 
 import json
 import re
-import textwrap
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
-from itertools import accumulate
+from dataclasses import replace
 from typing import Any
 
-from pydantic_ai.messages import ModelRequest, ModelResponse, ToolCallPart, ToolReturnPart, UserPromptPart
+from pydantic_ai.messages import (
+    ModelRequest,
+    ModelRequestPart,
+    ModelResponse,
+    ModelResponsePart,
+    RetryFeedbackPart,
+    TextPart,
+    ThinkingPart,
+    ToolCallPart,
+    ToolReturnPart,
+    UserPromptPart,
+)
+from pydantic_core import to_jsonable_python
 
 from ar.agent import OUTPUT_TOOL
 from ar.tool_support import WriteResult
 from evals.ar_projection import TableDiff, diff_text
 from evals.scoreboard import TraceTurn, TrialResult, TrialTrace
+from evals.trace_color import Kind, Line, render
 
-WIDTH = 100  # text is wrapped, and result digests cut, at this many characters
-LABEL = 8  # the label column: 'event   ', 'wrote   '
-RESULT = '     -> '  # a call's outcome, under the call
-LONG_TEXT = 32  # a string argument longer than this is shown in full on its own lines, after a short preview
-PREVIEW = 16  # characters of that string shown in the call itself
-VALUE_WIDTH = 60  # any other argument value is cut to this
-LOAD_TOOL = 'load_capability'
+HEADER = 2  # the trial's header line is indented this far
+TRIAL = 4  # and its trace this far, under the header
+BODY = 2  # a block's text sits this far in from its label
 ACTION_LOG = 'action_log'
 DENIAL = re.compile(r'Denied by (\S+): (.*)', re.DOTALL)  # the message of ar.errors.PolicyDenied
+NO_TRACE = 'no trace available for this turn'
+NO_RESULT = 'no result: the run stopped first'
+
+type Lines = tuple[Line, ...]
+type Answers = Mapping[str, ToolReturnPart]  # tool call id -> its return
 
 
-@dataclass(frozen=True)
-class _Call:
-    part: ToolCallPart
-    result: ToolReturnPart | None  # None if the run stopped before the call returned
-
-
-def trial_lines(number: int, result: TrialResult) -> list[str]:
+def trial_lines(number: int, result: TrialResult, *, color: bool = False) -> list[str]:
     """The trial's header, then indented under it: its trace and, if it failed, the failed assertions and the diff
     against the target."""
-    verdict = 'PASS' if result.passed else 'FAIL'
-    head = f'  trial {number}  {verdict}  {totals(result.tool_calls, result.cost_usd, result.seconds)}'
-    body = [*trace_lines(result.trace, result.error), *labelled('failed', result.failed_assertions),
-            *labelled('diff', [diff_text(d) for d in result.diff])]
-    return [head, *(f'    {line}' if line else '' for line in body)]
+    return render(_trial(number, result), color)
 
 
-def trace_lines(trace: TrialTrace, error: str | None = None) -> list[str]:
-    """Each turn in order (its prompt, its numbered tool calls with their outcomes, the agent's reply), then the
-    error the run stopped on, then what the agent wrote."""
-    calls = [_calls(turn.history) for turn in trace.turns]
-    firsts = accumulate((len(found or ()) for found in calls), initial=1)  # calls are numbered across turns
-    turns = [line for turn, found, first in zip(trace.turns, calls, firsts)
-             for line in _turn_lines(turn, found, first, trace.chat)]
-    return [*turns, *labelled('error', [error] if error else []), *_wrote_lines(trace.wrote)]
+def trace_lines(trace: TrialTrace, error: str | None = None, *, color: bool = False) -> list[str]:
+    """Each turn in order (the user's message, what the agent did, its reply), then the error the run stopped on,
+    then what the agent wrote."""
+    return render(_trace(trace, error), color)
 
 
 def totals(tool_calls: int, cost_usd: float, seconds: float) -> str:
@@ -66,24 +67,36 @@ def totals(tool_calls: int, cost_usd: float, seconds: float) -> str:
     return f'{_count(tool_calls, "tool call")}  ${cost_usd:.4f}  {seconds:.1f}s'
 
 
-def _turn_lines(turn: TraceTurn, calls: tuple[_Call, ...] | None, first: int, chat: bool) -> list[str]:
-    asked, answered = ('clerk', 'agent') if chat else ('event', 'final')
-    steps = (['no trace available for this turn'] if calls is None
-             else [line for number, call in enumerate(calls, first) for line in _call_lines(number, call)])
-    reply = [] if turn.reply is None else labelled(answered, [turn.reply])
-    return [*labelled(asked, [turn.prompt]), *steps, *reply]
+def _trial(number: int, result: TrialResult) -> Lines:
+    verdict = 'PASS' if result.passed else 'FAIL'
+    head = f'trial {number}  {verdict}  {totals(result.tool_calls, result.cost_usd, result.seconds)}'
+    body = (*_trace(result.trace, result.error), *_optional('FAILED', result.failed_assertions),
+            *_optional('DIFF', [diff_text(d) for d in result.diff]))
+    return (Line(Kind.PLAIN, head, HEADER), *(replace(line, indent=line.indent + TRIAL) for line in body))
 
 
-def _calls(history: Any) -> tuple[_Call, ...] | None:
-    """The tool calls of the turn that ends `history`, in order, each with its return; None if `history` is not a
-    list of pydantic-ai messages. The final-output call is left out: the reply shows it."""
+def _trace(trace: TrialTrace, error: str | None) -> Lines:
+    turns = tuple(line for turn in trace.turns for line in _turn(turn))
+    return (*turns, *_optional('ERROR', [error] if error else []), *_wrote(trace.wrote))
+
+
+def _turn(turn: TraceTurn) -> Lines:
+    reply = () if turn.reply is None else _block(Kind.ASSISTANT, 'ASSISTANT', [turn.reply])
+    return (*_block(Kind.USER, 'USER', [turn.prompt]), *_steps(turn.history), *reply)
+
+
+def _steps(history: Any) -> Lines:
+    """What the agent did in the turn that ends `history`, message by message; then each call the run stopped
+    before answering."""
     if not isinstance(history, list) or not all(isinstance(m, ModelRequest | ModelResponse) for m in history):
-        return None
+        return (Line(Kind.PLAIN, NO_TRACE),)
     own = history[_turn_start(history):]
-    returns = {part.tool_call_id: part for message in own if isinstance(message, ModelRequest)
+    answers = {part.tool_call_id: part for message in own if isinstance(message, ModelRequest)
                for part in message.parts if isinstance(part, ToolReturnPart)}
-    return tuple(_Call(part, returns.get(part.tool_call_id)) for message in own if isinstance(message, ModelResponse)
-                 for part in message.parts if isinstance(part, ToolCallPart) and part.tool_name != OUTPUT_TOOL)
+    unanswered = [part for message in own if isinstance(message, ModelResponse)
+                  for part in message.parts if isinstance(part, ToolCallPart) and part.tool_call_id not in answers]
+    return (*(line for message in own for part in message.parts for line in _part(part, answers)),
+            *(line for call in unanswered for line in _block(Kind.TOOL_RESULT, _result_label(call), [NO_RESULT])))
 
 
 def _turn_start(history: Sequence[ModelRequest | ModelResponse]) -> int:
@@ -92,94 +105,81 @@ def _turn_start(history: Sequence[ModelRequest | ModelResponse]) -> int:
                 and any(isinstance(part, UserPromptPart) for part in message.parts)), default=0)
 
 
-def _call_lines(number: int, call: _Call) -> list[str]:
-    """`3  amount_due(invoice_ids=["INV-1"])`, then each long text argument in full, then the outcome."""
-    name, args = call.part.tool_name, call.part.args_as_dict()
-    texts = [line for key, value in args.items() if _is_long_text(value)
-             for line in _block(f'     {key}: ', value)]
-    outcome = _outcome(call)
-    return [f'{number:<3}{call_text(name, args)}', *texts, *([] if outcome is None else _block(RESULT, outcome))]
+def _part(part: ModelRequestPart | ModelResponsePart, answers: Answers) -> Lines:
+    """One part of a message as a block; nothing for a part the trace leaves out (the user's prompt, shown from the
+    turn; empty thinking or text; instructions; the final-output call and its return when it succeeded)."""
+    match part:
+        case ThinkingPart() if part.has_content():
+            return _block(Kind.REASONING, 'REASONING', [part.content])
+        case TextPart() if part.has_content():
+            return _block(Kind.ASSISTANT, 'ASSISTANT', [part.content])
+        case ToolCallPart() if not _closing(answers.get(part.tool_call_id)):
+            return _block(Kind.TOOL_CALL, f'TOOL CALL {part.tool_name}', [_json(part.args_as_dict())])
+        case ToolReturnPart() if not _closing(part):
+            return (*_block(Kind.TOOL_RESULT, _result_label(part)), *_result(part))
+        case RetryFeedbackPart():
+            return _block(Kind.PLAIN, 'RETRY', [_text(part.content)])
+    return ()
 
 
-def call_text(name: str, args: Mapping[str, Any]) -> str:
-    """`amount_due(invoice_ids=["INV-1"])` on one line: a long text as a short preview, any other long value cut."""
-    shown = str(args.get('id')) if name == LOAD_TOOL else ', '.join(f'{k}={_inline(v)}' for k, v in args.items())
-    return f'{name}({shown})'
+def _closing(answer: ToolReturnPart | None) -> bool:
+    """The final-output call answered as accepted: the turn's reply shows it."""
+    return answer is not None and answer.tool_name == OUTPUT_TOOL and answer.outcome == 'success'
 
 
-def _outcome(call: _Call) -> str | None:
-    """DENIED by a rule, RETRY, HELD for a person, a write's status, or a one-line digest of what a read returned.
-    None for a capability that loaded."""
-    result = call.result
-    if result is None:
-        return 'no result: the run stopped first'
-    if result.outcome != 'success':
-        return _refusal(result)
-    if call.part.tool_name == LOAD_TOOL:
-        return None
-    if isinstance(result.content, WriteResult):
-        return _write(result.content)
-    return _clip(_digest(result.content), WIDTH - len(RESULT))
+def _result_label(part: ToolCallPart | ToolReturnPart) -> str:
+    return f'TOOL RESULT {part.tool_name}'
 
 
-def _refusal(result: ToolReturnPart) -> str:
-    text = result.content if isinstance(result.content, str) else json.dumps(result.content, default=str)
-    if result.outcome == 'retried' and (denial := DENIAL.match(text)):
-        return f'DENIED {denial[1]}: {denial[2]}'
-    return f'{"RETRY" if result.outcome == "retried" else result.outcome.upper()}: {text}'
+def _result(part: ToolReturnPart) -> Lines:
+    """A refusal; or the whole result, after the rule and approval when the write was held for a person."""
+    if part.outcome != 'success':
+        return _refusal(part)
+    content = part.content
+    if isinstance(content, WriteResult) and content.status == 'held_for_approval':
+        rule = f' {content.rule}' if content.rule else ''
+        held = _body(Kind.HELD, f'HELD{rule}: approval {content.approval_id}')
+        return (*held, *_body(Kind.TOOL_RESULT, _text(content)))
+    return _body(Kind.TOOL_RESULT, _text(content))
 
 
-def _write(written: WriteResult) -> str:
-    if written.status == 'held_for_approval':
-        return f'HELD{f" {written.rule}" if written.rule else ""}: approval {written.approval_id}'
-    return f'{written.status}: {written.target_id}'
+def _refusal(part: ToolReturnPart) -> Lines:
+    """DENIED by a policy rule, RETRY for any other refusal, or the outcome (FAILED, ...) with its text."""
+    text = _text(part.content)
+    if part.outcome == 'retried' and (denial := DENIAL.match(text)):
+        return _body(Kind.DENIED, f'DENIED {denial[1]}: {denial[2]}')
+    return _body(Kind.TOOL_RESULT, f'{"RETRY" if part.outcome == "retried" else part.outcome.upper()}: {text}')
 
 
-def _digest(value: Any) -> str:
-    """A mapping as its fields, each with a short form of its value; anything else as that short form."""
-    if isinstance(value, Mapping):
-        return '; '.join(f'{key} {_brief(item)}' for key, item in value.items())
-    return _brief(value)
-
-
-def _brief(value: Any) -> str:
-    """A list as its items, a row by its first field (its id), or 'none'; a mapping as {...}; else the value."""
-    if isinstance(value, list | tuple):
-        return ', '.join(str(next(iter(v.values()), '')) if isinstance(v, Mapping) else str(v) for v in value) or 'none'
-    return '{...}' if isinstance(value, Mapping) else str(value)
-
-
-def _wrote_lines(wrote: Sequence[TableDiff]) -> list[str]:
+def _wrote(wrote: Sequence[TableDiff]) -> Lines:
     """One table per line: ids added (+), changed (~, with the fields) or removed (-); the action log last, as a
     count."""
     texts = [f'{d.table} +{_count(len(d.added), "row")}' if d.table == ACTION_LOG else diff_text(d)
              for d in sorted(wrote, key=lambda d: d.table == ACTION_LOG)]
-    return labelled('wrote', texts or ['nothing'])
+    return _block(Kind.PLAIN, 'WROTE', texts or ['nothing'])
 
 
-def labelled(label: str, items: Sequence[str]) -> list[str]:
-    """Each item in full, wrapped; the label on the first line only, everything else aligned under the text."""
-    return [line for i, item in enumerate(items) for line in _block(f'{"" if i else label:<{LABEL}}', item)]
+def _optional(label: str, texts: Sequence[str]) -> Lines:
+    return _block(Kind.PLAIN, label, texts) if texts else ()
 
 
-def _block(prefix: str, text: str) -> list[str]:
-    """`text` in full, wrapped, its first line after `prefix` and the rest aligned under it; line breaks are kept."""
-    rows = [row for line in text.splitlines() or [''] for row in textwrap.wrap(line, WIDTH - len(prefix)) or ['']]
-    return [f'{" " * len(prefix) if i else prefix}{row}'.rstrip() for i, row in enumerate(rows)]
+def _block(kind: Kind, label: str, texts: Sequence[str] = ()) -> Lines:
+    """The label, then each text in full, line by line, under it."""
+    return (Line(kind, label, label=True), *(line for text in texts for line in _body(kind, text)))
 
 
-def _inline(value: Any) -> str:
-    if _is_long_text(value):
-        return f'"{" ".join(value.split())[:PREVIEW]}..."'  # one line: the full text follows the call
-    return _clip(json.dumps(value, ensure_ascii=False, default=str), VALUE_WIDTH)
+def _body(kind: Kind, text: str) -> Lines:
+    # Blank lines around the text are dropped (a model's thinking often ends with some); those inside are kept.
+    return tuple(Line(kind, row, BODY) for row in text.strip('\n').splitlines() or [''])
 
 
-def _is_long_text(value: Any) -> bool:
-    return isinstance(value, str) and len(value) > LONG_TEXT
+def _text(value: Any) -> str:
+    """A string as it is, line breaks kept; anything else as indented JSON."""
+    return value if isinstance(value, str) else _json(value)
 
 
-def _clip(text: str, width: int) -> str:
-    return text if len(text) <= width else f'{text[:width - 3]}...'
+def _json(value: Any) -> str:
+    return json.dumps(to_jsonable_python(value, fallback=str), indent=2, ensure_ascii=False)
 
 
 def _count(n: int, noun: str) -> str:

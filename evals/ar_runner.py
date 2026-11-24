@@ -100,16 +100,18 @@ def labels(task: Task) -> TaskLabels:
 
 
 async def run_trial(task: Task, agent_fn: AgentFn, *, clerk: ClerkFn | None = None, retrieval: Retrieval = 'search',
-                    max_turns: int = DEFAULT_MAX_TURNS, judge: JudgeFn | None = None) -> TrialResult:
-    """One trial: TARGET by replay, ACTUAL by the agent, scored with no model. The agent crashing fails the trial;
-    a broken reference path or initial state raises."""
+                    max_turns: int = DEFAULT_MAX_TURNS, judge: JudgeFn | None = None,
+                    thinking: bool = False) -> TrialResult:
+    """One trial: TARGET by replay, ACTUAL by the agent (with `thinking` passed to every turn), scored with no model.
+    The agent crashing fails the trial; a broken reference path or initial state raises."""
     customer = _customer(task, clerk)
     target = initialize(task)
     replay(target, task)
     actual = initialize(task)
     start, customer_id = actual.db, task.annotations.customer_id
     ran = await run_agent(actual, customer_id, agent_fn, ticket=task.ticket, customer=customer, max_turns=max_turns,
-                          retrieval=retrieval, golden_documents=task.required_documents if retrieval == 'golden' else ())
+                          retrieval=retrieval, golden_documents=task.required_documents if retrieval == 'golden' else (),
+                          thinking=thinking)
     tone, tone_error = await score_tone(judge, task.id, customer_id, start, actual.db) if judge else (None, None)
     changes, failed = diff(project(target.db), project(actual.db)), failed_assertions(actual.db, task)
     return TrialResult(
@@ -227,7 +229,7 @@ async def _agent_turn(agent_fn: AgentFn, store: Store, customer_id: str, prompt:
 
 async def run_tasks(tasks: Iterable[Task], agent_fn: AgentFn, *, trials: int = 1,
                     concurrency: int = DEFAULT_CONCURRENCY, clerk: ClerkFn | None = None,
-                    retrieval: Retrieval = 'search', judge: JudgeFn | None = None,
+                    retrieval: Retrieval = 'search', judge: JudgeFn | None = None, thinking: bool = False,
                     progress: bool = False) -> tuple[TrialResult, ...]:
     """Every task `trials` times, at most `concurrency` at once, each trial on its own stores. Every task's initial
     state and reference path is replayed first, offline, so a broken one raises before any paid trial runs."""
@@ -236,7 +238,7 @@ async def run_tasks(tasks: Iterable[Task], agent_fn: AgentFn, *, trials: int = 1
         check_reference(task)
 
     async def trial(task: Task) -> TrialResult:
-        result = await run_trial(task, agent_fn, clerk=clerk, retrieval=retrieval, judge=judge)
+        result = await run_trial(task, agent_fn, clerk=clerk, retrieval=retrieval, judge=judge, thinking=thinking)
         increment_eval_metric(COST_METRIC, result.cost_usd)
         return result
 
