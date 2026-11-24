@@ -18,3 +18,5 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+addopts = "-m 'not e2e'"  # stay offline by default; `uv run pytest -m e2e` runs the live tests
+markers = ["e2e: live runs against the real model; need ANTHROPIC_API_KEY"]
