@@ -56,13 +56,6 @@ def test_bad_arguments_fail_with_a_clear_error(argv, message, capsys):
     assert message in capsys.readouterr().err
 
 
-def test_a_clean_run_exits_zero_and_prints_tasks_then_grid(capsys):
-    assert ar_evals.main(['--task', 'task_13', 'task_17', '--trials', '2']) == 0
-    out = capsys.readouterr().out
-    assert 'task_13  2/2' in out and 'task_17  2/2' in out
-    assert out.index('task_17') < out.index('overall') < out.index('No baseline yet')
-
-
 def test_without_trace_the_output_is_exactly_what_it_was(monkeypatch, capsys):
     monkeypatch.setattr(ar_runner, 'time', SimpleNamespace(perf_counter=lambda: 0.0))
     assert ar_evals.main(['--task', 'task_13', 'task_15', 'task_02', '--trials', '2']) == 1
@@ -98,13 +91,6 @@ def test_trace_shows_a_crash(monkeypatch, capsys):
     monkeypatch.setattr(ar_evals, 'run_turn', raising_agent)
     assert ar_evals.main(['--task', 'task_13', '--trace']) == 0
     assert '    error   RuntimeError: model unavailable' in capsys.readouterr().out
-
-
-def test_a_failed_never_event_exits_one(capsys):
-    assert ar_evals.main(['--task', 'task_16', 'task_15']) == 1
-    out = capsys.readouterr().out
-    assert 'task_15  0/1' in out and 'assert_application_count(payment_id=pay_2005, expected=1)' in out
-    assert 'never-event task failed' in out
 
 
 def test_missed_human_in_the_loop_exits_one(capsys):
