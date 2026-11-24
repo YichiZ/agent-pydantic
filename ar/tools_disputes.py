@@ -6,13 +6,12 @@ logs once; a denied write raises `PolicyDenied` and leaves the store as it was.
 
 from decimal import Decimal
 
-from ar.data_model import ArDb, Credit, CreditStatus, Dispute, DisputeCategory, DisputeStatus, next_id
+from ar.data_model import ArDb, Credit, CreditApproval, CreditStatus, Dispute, DisputeCategory, DisputeStatus, next_id
 from ar.errors import InvalidArgumentError
 from ar.ledger import balance
-from ar.payloads import CreditApproval
 from ar.policy import (
     Outcome,
-    check_open_dispute,
+    check_invoice_scope,
     check_propose_credit,
     check_reject_dispute,
 )
@@ -39,7 +38,7 @@ def open_dispute(store: Store, customer_id: str, invoice_id: str, category: str,
     invoice_id = parse_text(invoice_id, 'invoice_id')
     kind = parse_choice(DisputeCategory, category, 'category')
     contested, claim = parse_money(amount, 'amount'), parse_text(claim, 'claim')
-    require(check_open_dispute(db, customer_id, invoice_id=invoice_id))
+    require(check_invoice_scope(db, customer_id, invoice_id=invoice_id))
     invoice = db.invoice(invoice_id)
     require_amount(contested, balance(db, invoice_id), 'amount', f'the balance of {invoice_id}')
     dispute = Dispute(

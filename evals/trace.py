@@ -18,6 +18,7 @@ from typing import Any
 
 from pydantic_ai.messages import ModelRequest, ModelResponse, ToolCallPart, ToolReturnPart, UserPromptPart
 
+from ar.agent import OUTPUT_TOOL
 from ar.tool_support import WriteResult
 from evals.ar_projection import TableDiff, diff_text
 from evals.scoreboard import TraceTurn, TrialResult, TrialTrace
@@ -28,7 +29,6 @@ RESULT = '     -> '  # a call's outcome, under the call
 LONG_TEXT = 32  # a string argument longer than this is shown in full on its own lines, after a short preview
 PREVIEW = 16  # characters of that string shown in the call itself
 VALUE_WIDTH = 60  # any other argument value is cut to this
-OUTPUT_TOOL = 'final_result'  # ar.agent.OUTPUT_TOOL; not imported, so the command still loads without the agent
 LOAD_TOOL = 'load_capability'
 ACTION_LOG = 'action_log'
 DENIAL = re.compile(r'Denied by (\S+): (.*)', re.DOTALL)  # the message of ar.errors.PolicyDenied

@@ -1,6 +1,6 @@
 # AR coworker: design
 
-Status: draft for review, 2026-11-23. The database exists in `db/`; no agent code exists yet.
+Status: draft for review, 2026-11-23. The database is in `db/`, the agent in `ar/` and the eval runner in `evals/`.
 
 An AI coworker that runs accounts receivable for one tenant: it chases overdue invoices, applies
 incoming cash, and handles disputes and deductions. This document starts with the eval suite and
@@ -185,7 +185,7 @@ db/                the role of tau2's data/tau2/domains/<name>/
   split_tasks.json   base, never_events, cross_flow
   documents/         knowledge base for retrieval configurations
 ar/                the role of tau2's src/tau2/domains/<name>/
-  data_model.py  ledger.py  policy.py  tools.py  agent.py
+  data_model.py  ledger.py  policy.py  tools_*.py  agent.py
 tests/
 ```
 
@@ -212,8 +212,7 @@ The build order, tool arguments and per-task end states are in
 | `action_log` | every write, with reason |
 
 There are eight dispute categories: trade promotion, pricing variance, freight, shortage,
-damaged goods, quality, delivery, duplicate charge. Size: 13 customers and 20 invoices today, and
-18 and 26 once the rows for tasks 13 to 18 are added.
+damaged goods, quality, delivery, duplicate charge. Size: 18 customers and 26 invoices.
 
 ### 2.2 Tools
 
@@ -221,7 +220,7 @@ damaged goods, quality, delivery, duplicate charge. Size: 13 customers and 20 in
   `amount_due`, `search_knowledge`.
 - Write: `apply_payment`, `send_message`, `open_dispute`, `propose_credit`, `reject_dispute`, `log_promise`,
   `execute_approval`, `escalate_to_human`.
-- Assert methods, called by `env_assertions`: `assert_no_outbound_message`,
+- Assert methods, called by `env_assertions`: `assert_outbound_message_count`,
   `assert_last_message_amount`, `assert_no_credit_without_approval`, `assert_unapplied_cash`,
   `assert_application_count`, `assert_invoice_paused`, `assert_balance`, `assert_human_requested`,
   and five more, all named in `db/tasks.json`.
@@ -252,11 +251,11 @@ damaged goods, quality, delivery, duplicate charge. Size: 13 customers and 20 in
 | 11 | Cross-flow | ticket | Credit applied yesterday, reminder due | Message asks for the net amount |
 | 12 | Cross-flow | ticket | Dispute open on one of two overdue invoices | Reminder covers only the undisputed one |
 
-Never-events split: 3, 7, 10, 11, 12. Tasks 6, 9, 10 and 14 carry `required_documents`.
+Never-events split: 3, 7, 10, 11, 12. Tasks 6, 8, 9, 10 and 14 carry `required_documents`.
 
 Laid against the axes in section 1.3, the twelve leave gaps: every dispute is valid, every aging
 event deserves a reminder, and no input is hostile. Eight more tasks close them, including the
-second half of the approval flow. The database does not yet hold the rows tasks 13 to 18 need.
+second half of the approval flow.
 
 | # | Flow | Mode | Scenario | Must hold | Closes |
 |---|---|---|---|---|---|

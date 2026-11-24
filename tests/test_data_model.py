@@ -27,18 +27,12 @@ from ar.data_model import (
     UnknownTableError,
     next_id,
 )
-
-DB_PATH = Path(__file__).resolve().parent.parent / 'db' / 'db.json'
+from evals.ar_tasks import DB_PATH
 
 
 @pytest.fixture(scope='module')
 def raw() -> dict:
     return json.loads(DB_PATH.read_text())
-
-
-@pytest.fixture(scope='module')
-def db() -> ArDb:
-    return ArDb.load(DB_PATH)
 
 
 def test_loads_every_table_with_typed_rows(db, raw):

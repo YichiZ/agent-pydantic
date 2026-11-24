@@ -21,7 +21,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from pydantic import ValidationError
 
-from ar.run_types import AgentFn
+from ar.agent import run_turn
 from evals.ar_projection import diff_text
 from evals.ar_runner import DEFAULT_CONCURRENCY, run_tasks
 from evals.ar_tasks import TaskFileError, load_splits, load_tasks
@@ -35,12 +35,6 @@ DEFAULT_SPLIT = 'base'
 NEVER_EVENTS_SPLIT = 'never_events'
 
 
-def load_agent() -> AgentFn:  # pragma: no cover - the real agent needs a model and an API key
-    from ar.agent import run_turn  # lazy: this module and its tests work without the agent
-
-    return run_turn
-
-
 def main(argv: Sequence[str] | None = None) -> int:
     load_dotenv()  # ANTHROPIC_API_KEY from .env, found by walking up from this file; real env vars win
     try:
@@ -52,7 +46,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv, [t.id for t in tasks], sorted(splits))
     wanted = set(args.task or splits[args.split or DEFAULT_SPLIT])
     trials = asyncio.run(run_tasks(
-        [t for t in tasks if t.id in wanted], load_agent(), trials=args.trials, concurrency=args.concurrency,
+        [t for t in tasks if t.id in wanted], run_turn, trials=args.trials, concurrency=args.concurrency,
         clerk=haiku_clerk, retrieval=args.retrieval, judge=sonnet_judge if args.judge else None,
         progress=sys.stdout.isatty()))
     result = grid(trials, never_events=set(splits.get(NEVER_EVENTS_SPLIT, ())), retrieval=args.retrieval)

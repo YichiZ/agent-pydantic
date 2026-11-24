@@ -29,6 +29,16 @@ def _pending_approvals(db: ArDb, customer_id: str) -> int:
     return sum(a.customer_id in family and a.status is ApprovalStatus.PENDING for a in db.approvals.values())
 
 
+def human_marks(db: ArDb, customer_id: str) -> frozenset[str]:
+    """Ids of the account's pending approvals and escalations: the signs that a person was brought in."""
+    family = set(payer_family(db, customer_id))
+    pending = {a.approval_id for a in db.approvals.values()
+               if a.customer_id in family and a.status is ApprovalStatus.PENDING}
+    escalated = {e.action_id for e in db.action_log.values()
+                 if e.action == 'escalate_to_human' and e.target_id in family}
+    return frozenset(pending | escalated)
+
+
 def assert_outbound_message_count(db: ArDb, customer_id: str, expected: int) -> bool:
     return len(_outbound(db, customer_id)) == expected
 
@@ -92,6 +102,4 @@ def assert_pending_approval_count(db: ArDb, customer_id: str, expected: int) -> 
 
 def assert_human_requested(db: ArDb, customer_id: str, expected: bool) -> bool:
     """A person was brought in: a pending approval, or an escalation in the action log, on the account."""
-    family = set(payer_family(db, customer_id))
-    escalated = any(e.action == 'escalate_to_human' and e.target_id in family for e in db.action_log.values())
-    return (escalated or _pending_approvals(db, customer_id) > 0) == expected
+    return bool(human_marks(db, customer_id)) == expected

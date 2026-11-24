@@ -1,7 +1,6 @@
 """Policy rules P1-P15: at least one allowed and one failing case each, on rows from db/db.json."""
 from datetime import timedelta
 from decimal import Decimal
-from pathlib import Path
 
 import pytest
 
@@ -13,23 +12,14 @@ from ar.policy import (
     amounts_in,
     check_apply_payment,
     check_execute_approval,
-    check_log_promise,
-    check_open_dispute,
+    check_invoice_scope,
     check_propose_credit,
     check_reject_dispute,
     check_scope,
     check_send_message,
     payment_candidates,
 )
-
-ROOT = Path(__file__).resolve().parent.parent
-DB_PATH = ROOT / 'db' / 'db.json'
-DOCUMENTS = ROOT / 'db' / 'documents'
-
-
-@pytest.fixture(scope='module')
-def db() -> ArDb:
-    return ArDb.load(DB_PATH)
+from evals.ar_tasks import DB_PATH, DOCUMENTS_DIR
 
 
 def send(db: ArDb, customer_id: str, contact_id: str, invoice_ids: list[str], body: str,
@@ -205,13 +195,13 @@ def test_p11_nothing_outside_the_account_and_its_children(db):
     assert_denied(send(db, 'cus_brightwell', 'con_801', ['INV-1201'], '$3,975.50'), 'P11')
     assert_denied(apply(db, 'cus_brightwell', 'pay_2001', 'INV-1301', '15000.00'), 'P11')
     assert_denied(credit(db, 'cus_brightwell', 'dsp_3001', '378.00'), 'P11')
-    assert_denied(check_open_dispute(db, 'cus_brightwell', invoice_id='INV-1501'), 'P11')
+    assert_denied(check_invoice_scope(db, 'cus_brightwell', invoice_id='INV-1501'), 'P11')
     assert_denied(check_reject_dispute(db, 'cus_brightwell', dispute_id='dsp_3005'), 'P11')
-    assert_denied(check_log_promise(db, 'cus_brightwell', invoice_id='INV-1101'), 'P11')
+    assert_denied(check_invoice_scope(db, 'cus_brightwell', invoice_id='INV-1101'), 'P11')
     assert_denied(check_execute_approval(db, 'cus_brightwell', approval_id='apr_8000'), 'P11')
-    assert_allowed(check_open_dispute(db, 'cus_ridgeway', invoice_id='INV-1501'))
+    assert_allowed(check_invoice_scope(db, 'cus_ridgeway', invoice_id='INV-1501'))
     assert_allowed(check_reject_dispute(db, 'cus_larkspur', dispute_id='dsp_3005'))
-    assert_allowed(check_log_promise(db, 'cus_hollis', invoice_id='INV-1101'))
+    assert_allowed(check_invoice_scope(db, 'cus_hollis', invoice_id='INV-1101'))
 
 
 def test_p12_no_reminder_while_a_promise_is_not_yet_due(db):
@@ -246,11 +236,11 @@ def test_p14_only_open_overdue_invoices_are_chased(db):
 
 def test_p13_only_an_approved_approval_is_carried_out_once(db):
     assert_denied(check_execute_approval(db, 'cus_garnet', approval_id='apr_8000'), 'P13')  # already executed
-    store = fresh_store(DB_PATH, DOCUMENTS)
+    store = fresh_store(DB_PATH, DOCUMENTS_DIR)
     call_tool(store, 'cus_fennick', 'propose_credit', {'dispute_id': 'dsp_3002', 'amount': '3120.00', 'reason': 'r'})
     assert_denied(check_execute_approval(store.db, 'cus_fennick', approval_id='apr_8001'), 'P13')  # pending
     decided = {'approval_id': 'apr_8001', 'decided_by': 'ar_lead', 'note': None}
-    approved = fresh_store(DB_PATH, DOCUMENTS)
+    approved = fresh_store(DB_PATH, DOCUMENTS_DIR)
     call_tool(approved, 'cus_fennick', 'propose_credit', {'dispute_id': 'dsp_3002', 'amount': '3120.00', 'reason': 'r'})
     call_env_function(approved, 'decide_approval', {**decided, 'decision': 'approved'})
     assert_allowed(check_execute_approval(approved.db, 'cus_fennick', approval_id='apr_8001'))

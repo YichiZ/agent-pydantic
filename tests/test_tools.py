@@ -2,7 +2,6 @@
 import json
 from datetime import date
 from decimal import Decimal
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -21,15 +20,7 @@ from ar.data_model import (
 from ar.environment import TOOLS, call_env_function, call_tool, check_assertion, fresh_store
 from ar.errors import InvalidArgumentError, PolicyDenied, UnknownToolError
 from ar.store import Store
-
-ROOT = Path(__file__).resolve().parent.parent
-DB_PATH = ROOT / 'db' / 'db.json'
-DOCUMENTS = ROOT / 'db' / 'documents'
-
-
-@pytest.fixture
-def store() -> Store:
-    return fresh_store(DB_PATH, DOCUMENTS)
+from evals.ar_tasks import DB_PATH
 
 
 def run(store: Store, customer_id: str, name: str, **arguments: Any) -> Any:

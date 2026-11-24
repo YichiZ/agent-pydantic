@@ -10,7 +10,6 @@ from pydantic_ai.models.function import FunctionModel
 from scripted_agents import noop_agent, replay_agent
 from test_agent import DB_DIR, Script, load, reference_calls, run
 
-from ar import agent as ar_agent
 from ar.agent import MAX_REQUESTS, agent, run_turn
 from ar.environment import fresh_store
 from ar.run_types import AgentFn, AgentTurn
@@ -133,10 +132,6 @@ def test_a_clerk_that_raises_fails_the_trial_and_keeps_the_turns_before_it():
     result = asyncio.run(run_trial(TASKS['task_02'], noop_agent, clerk=clerk))
     assert result.passed is False and result.error == 'TimeoutError: clerk timed out'
     assert [(t.prompt, t.reply) for t in result.trace.turns] == [('Hi, INV-1101 will be paid Friday.', 'Nothing to do.')]
-
-
-def test_the_output_tool_name_matches_the_agent():
-    assert trace.OUTPUT_TOOL == ar_agent.OUTPUT_TOOL
 
 
 @pytest.mark.parametrize('history', [None, 'h1', 3, ['not', 'messages']])

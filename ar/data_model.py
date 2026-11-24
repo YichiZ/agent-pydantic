@@ -127,10 +127,14 @@ class UnknownApprovalError(UnknownIdError):
     kind = 'approval'
 
 
-class Row(BaseModel):
+class _Frozen(BaseModel):
+    model_config = ConfigDict(frozen=True, extra='forbid')
+
+
+class Row(_Frozen):
     """A frozen table row. Revalidated whenever it is put into an `ArDb`, so `model_copy` edits are checked."""
 
-    model_config = ConfigDict(frozen=True, extra='forbid', revalidate_instances='always')
+    model_config = ConfigDict(revalidate_instances='always')
     id_field: ClassVar[str]
 
     @property
@@ -174,8 +178,7 @@ class Contact(Row):
     note: str | None
 
 
-class InvoiceLine(BaseModel):
-    model_config = ConfigDict(frozen=True, extra='forbid')
+class InvoiceLine(_Frozen):
     sku: str
     description: str
     quantity: int
@@ -206,8 +209,7 @@ class Payment(Row):
     status: PaymentStatus
 
 
-class RemittanceLine(BaseModel):
-    model_config = ConfigDict(frozen=True, extra='forbid')
+class RemittanceLine(_Frozen):
     invoice_ref: str
     amount: Money
     deduction_amount: Money | None
@@ -297,6 +299,35 @@ class Approval(Row):
     executed_at: date | None
 
 
+# What an approval's payload holds, per action: built by the tool that holds the write, read back to carry it out.
+
+class MessageDraft(_Frozen):
+    """send_message held under P5."""
+
+    contact_id: str
+    channel: Channel
+    invoice_ids: tuple[str, ...]
+    amount: Money
+    body: str
+
+
+class CreditApproval(_Frozen):
+    """propose_credit held under P10; the credit row exists with status proposed."""
+
+    credit_id: str
+    dispute_id: str
+    invoice_id: str
+    amount: Money
+
+
+class PaymentApproval(_Frozen):
+    """apply_payment held under P8 (the reviewer picks one of the candidates) or P15 (no candidate matches)."""
+
+    payment_id: str
+    amount: Money
+    candidate_invoice_ids: tuple[str, ...]
+
+
 class CustomerNote(Row):
     id_field = 'note_id'
     note_id: str
@@ -317,10 +348,8 @@ class ActionLogEntry(Row):
     reason: str
 
 
-class ArDb(BaseModel):
+class ArDb(_Frozen):
     """The whole database: one `{id: row}` mapping per table, named as in db.json."""
-
-    model_config = ConfigDict(frozen=True, extra='forbid')
 
     tenants: Mapping[str, Tenant]
     customers: Mapping[str, Customer]

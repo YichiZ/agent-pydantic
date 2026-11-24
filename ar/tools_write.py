@@ -16,9 +16,12 @@ from ar.data_model import (
     ArDb,
     Channel,
     Credit,
+    CreditApproval,
     CreditStatus,
     Message,
     MessageDirection,
+    MessageDraft,
+    PaymentApproval,
     PaymentStatus,
     Promise,
     PromiseStatus,
@@ -26,12 +29,11 @@ from ar.data_model import (
 )
 from ar.errors import InvalidArgumentError
 from ar.ledger import amount_due, balance, payer_family, unapplied
-from ar.payloads import CreditApproval, MessageDraft, PaymentApproval
 from ar.policy import (
     Outcome,
     check_apply_payment,
     check_execute_approval,
-    check_log_promise,
+    check_invoice_scope,
     check_scope,
     check_send_message,
     payment_candidates,
@@ -140,7 +142,7 @@ def log_promise(store: Store, customer_id: str, invoice_id: str, promised_date: 
     db = store.db
     invoice_id, when = parse_text(invoice_id, 'invoice_id'), parse_date(promised_date, 'promised_date')
     promised = parse_money(amount, 'amount')
-    require(check_log_promise(db, customer_id, invoice_id=invoice_id))
+    require(check_invoice_scope(db, customer_id, invoice_id=invoice_id))
     require_amount(promised, balance(db, invoice_id), 'amount', f'the balance of {invoice_id}')
     if when < db.today:
         raise InvalidArgumentError(f'promised_date {when} is in the past; today is {db.today}.')

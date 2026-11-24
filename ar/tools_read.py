@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 from ar import ledger
 from ar.data_model import ArDb, DisputeStatus, Invoice, Payment, PromiseStatus, Row
-from ar.policy import check_scope, remittance_for
+from ar.policy import check_invoice_scope, check_scope, remittance_for
 from ar.store import Store
 from ar.tool_support import parse_ids, parse_text, require
 
@@ -57,9 +57,9 @@ def list_open_invoices(store: Store, customer_id: str) -> list[Json]:
 def get_invoice(store: Store, customer_id: str, invoice_id: str) -> Json:
     """One invoice with its balance and its disputes, credits and messages."""
     db = store.db
-    invoice = db.invoice(parse_text(invoice_id, 'invoice_id'))
-    require(check_scope(db, customer_id, invoice.customer_id, f'Invoice {invoice.invoice_id}'))
-    on_invoice = invoice.invoice_id
+    on_invoice = parse_text(invoice_id, 'invoice_id')
+    require(check_invoice_scope(db, customer_id, invoice_id=on_invoice))
+    invoice = db.invoice(on_invoice)
     return {
         **_invoice(db, invoice),
         'disputes': _rows(db.disputes, lambda d: d.invoice_id == on_invoice),
@@ -91,7 +91,7 @@ def amount_due(store: Store, customer_id: str, invoice_ids: Sequence[str]) -> Js
     db = store.db
     ids = parse_ids(invoice_ids, 'invoice_ids')
     for invoice_id in ids:
-        require(check_scope(db, customer_id, db.invoice(invoice_id).customer_id, f'Invoice {invoice_id}'))
+        require(check_invoice_scope(db, customer_id, invoice_id=invoice_id))
     return {'invoice_ids': list(ids), 'amount_due': _money(ledger.amount_due(db, ids))}
 
 

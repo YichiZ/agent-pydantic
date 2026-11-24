@@ -20,16 +20,17 @@ from ar.data_model import (
     AutonomyLevel,
     Channel,
     Contact,
+    CreditApproval,
     CreditStatus,
     Dispute,
     DisputeStatus,
     InvoiceStatus,
     MessageDirection,
+    MessageDraft,
     PromiseStatus,
     Remittance,
 )
 from ar.ledger import ZERO, amount_due, applied_credits, balance, is_overdue, open_invoices, payer_family, unapplied
-from ar.payloads import CreditApproval, MessageDraft
 
 
 class Outcome(StrEnum):
@@ -100,9 +101,9 @@ def check_scope(db: ArDb, customer_id: str, owner_id: str, what: str) -> Decisio
     return deny('P11', f"{what} belongs to {owner_id}, outside this run's account ({', '.join(family)}); leave it alone.")
 
 
-def _invoice_scope(db: ArDb, customer_id: str, invoice_ids: Sequence[str]) -> Iterator[Decision]:
-    for invoice_id in invoice_ids:
-        yield check_scope(db, customer_id, db.invoice(invoice_id).customer_id, f'Invoice {invoice_id}')
+def check_invoice_scope(db: ArDb, customer_id: str, *, invoice_id: str) -> Decision:
+    """P11 for one invoice; the whole check on opening a dispute on it or logging a promise against it."""
+    return check_scope(db, customer_id, db.invoice(invoice_id).customer_id, f'Invoice {invoice_id}')
 
 
 # Messages: P11, P2, P1, P14, P12, P4, P3, P5.
@@ -117,7 +118,7 @@ def check_send_message(db: ArDb, customer_id: str, *, contact_id: str, channel: 
 def _message_rules(db: ArDb, customer_id: str, contact: Contact, channel: Channel, invoice_ids: Sequence[str],
                    body: str, approved: bool) -> Iterator[Decision]:
     yield check_scope(db, customer_id, contact.customer_id, f'Contact {contact.contact_id}')
-    yield from _invoice_scope(db, customer_id, invoice_ids)
+    yield from (check_invoice_scope(db, customer_id, invoice_id=invoice_id) for invoice_id in invoice_ids)
     yield _p2_do_not_contact(contact)
     yield _p1_not_paused(db, invoice_ids)
     yield _p14_open_and_overdue(db, invoice_ids)
@@ -211,7 +212,7 @@ def _payment_rules(db: ArDb, customer_id: str, payment_id: str, invoice_id: str,
     if invoice.customer_id not in payer_family(db, payment.customer_id):
         yield deny('P7', f'{invoice_id} belongs to {invoice.customer_id}, outside the family of the payer '
                          f'{payment.customer_id}; apply the payment only to the payer\'s own invoices.')
-    yield check_scope(db, customer_id, invoice.customer_id, f'Invoice {invoice_id}')
+    yield check_invoice_scope(db, customer_id, invoice_id=invoice_id)
     yield _p6_fits(db, payment_id, invoice_id, amount)
     yield _p15_follows_remittance(db, payment_id, invoice_id, amount)
     yield _p8_one_candidate(db, payment_id)
@@ -269,16 +270,9 @@ def _p8_one_candidate(db: ArDb, payment_id: str) -> Decision:
 
 # Disputes and credits: P11, P9, P10.
 
-def check_open_dispute(db: ArDb, customer_id: str, *, invoice_id: str) -> Decision:
-    return check_scope(db, customer_id, db.invoice(invoice_id).customer_id, f'Invoice {invoice_id}')
-
 
 def has_open_dispute(db: ArDb, invoice_id: str) -> bool:
     return any(d.invoice_id == invoice_id and d.status is DisputeStatus.OPEN for d in db.disputes.values())
-
-
-def check_log_promise(db: ArDb, customer_id: str, *, invoice_id: str) -> Decision:
-    return check_scope(db, customer_id, db.invoice(invoice_id).customer_id, f'Invoice {invoice_id}')
 
 
 def _dispute_scope(db: ArDb, customer_id: str, dispute: Dispute) -> Decision:
