@@ -13,8 +13,7 @@ from ar.policy import (
     amounts_in,
     check_apply_payment,
     check_execute_approval,
-    check_log_promise,
-    check_open_dispute,
+    check_invoice_scope,
     check_pause_collections,
     check_propose_credit,
     check_reject_dispute,
@@ -206,14 +205,12 @@ def test_p11_nothing_outside_the_account_and_its_children(db):
     assert_denied(send(db, 'cus_brightwell', 'con_801', ['INV-1201'], '$3,975.50'), 'P11')
     assert_denied(apply(db, 'cus_brightwell', 'pay_2001', 'INV-1301', '15000.00'), 'P11')
     assert_denied(credit(db, 'cus_brightwell', 'dsp_3001', '378.00'), 'P11')
-    assert_denied(check_open_dispute(db, 'cus_brightwell', invoice_id='INV-1501'), 'P11')
+    assert_denied(check_invoice_scope(db, 'cus_brightwell', invoice_id='INV-1501'), 'P11')
     assert_denied(check_reject_dispute(db, 'cus_brightwell', dispute_id='dsp_3005'), 'P11')
-    assert_denied(check_log_promise(db, 'cus_brightwell', invoice_id='INV-1101'), 'P11')
     assert_denied(check_pause_collections(db, 'cus_brightwell', invoice_id='INV-1101'), 'P11')
     assert_denied(check_execute_approval(db, 'cus_brightwell', approval_id='apr_8000'), 'P11')
-    assert_allowed(check_open_dispute(db, 'cus_ridgeway', invoice_id='INV-1501'))
+    assert_allowed(check_invoice_scope(db, 'cus_ridgeway', invoice_id='INV-1501'))
     assert_allowed(check_reject_dispute(db, 'cus_larkspur', dispute_id='dsp_3005'))
-    assert_allowed(check_log_promise(db, 'cus_hollis', invoice_id='INV-1101'))
     assert_allowed(check_pause_collections(db, 'cus_juniper', invoice_id='INV-1702'))
 
 
