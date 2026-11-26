@@ -56,8 +56,9 @@ Each run then shows up in the project's Live view under the service `browser`, a
   What the page did during it is attached as events: console messages, page errors, responses (4xx and 5xx marked
   as errors), and failed or blocked requests.
 
-The eval is a Pydantic Evals experiment, so its trace starts with an `evaluate run` span for the dataset
-`bu_bench_v2`, with each trial's agent run under it. No eval has been run with tracing on yet.
+The eval is a Pydantic Evals experiment, so its trace should start with an `evaluate run` span (dataset
+`bu_bench_v2`), with each trial's agent run under it. That is from the library source: no eval has been run with
+tracing on yet.
 
 Logfire's default scrubbing can redact text that contains words like "session" or "cookie"; the Playwright
 capability's README shows how to keep it. The setup is `trace_to_logfire()` in `agent.py`.
