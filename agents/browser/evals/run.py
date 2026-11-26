@@ -29,11 +29,12 @@ JUDGE_SNIPPET = """
 import asyncio, json, sys
 from evaluation import load_tasks, create_judge, judge_trace
 task = next(t for t in load_tasks() if t['task_id'] == sys.argv[1])
-llm, tokens = create_judge(), {}
+llm, tokens = create_judge(), {'input': 0, 'output': 0}
 call = llm.ainvoke
 async def counted(*args, **kwargs):  # judge_trace does not return the judge's token usage, so note it here
     response = await call(*args, **kwargs)
-    tokens.update(input=response.usage.prompt_tokens, output=response.usage.completion_tokens)
+    if response.usage:
+        tokens.update(input=response.usage.prompt_tokens, output=response.usage.completion_tokens)
     return response
 llm.ainvoke = counted
 judged = asyncio.run(judge_trace(task, json.load(open(sys.argv[2])), llm))
@@ -63,8 +64,9 @@ def trace(messages: Sequence[ModelMessage], answer: str) -> dict:
 
 async def run(prompt: str) -> dict:
     result = await agent.run(prompt)
-    # The judge ignores keys it does not know, so the agent's cost rides along to the evaluator.
-    return {**trace(result.all_messages(), result.output), 'agent_cost_usd': float(result.usage().cost)}
+    # The judge ignores keys it does not know, so the agent's cost rides along to the evaluator. A model with no
+    # known price has no cost: report 0 rather than lose the run.
+    return {**trace(result.all_messages(), result.output), 'agent_cost_usd': float(result.usage.cost or 0)}
 
 
 def results(judged: dict) -> dict:

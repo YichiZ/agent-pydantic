@@ -1,3 +1,5 @@
+import asyncio
+
 from pydantic_ai.messages import (
     ModelRequest,
     ModelResponse,
@@ -7,8 +9,10 @@ from pydantic_ai.messages import (
     ToolReturnPart,
     UserPromptPart,
 )
+from pydantic_ai.models.test import TestModel
 
-from agents.browser.evals.run import results, trace
+from agents.browser.agent import agent
+from agents.browser.evals.run import results, run, trace
 
 
 def test_trace_keeps_tool_calls_results_and_text_in_order():
@@ -48,3 +52,11 @@ def test_results_gives_each_item_the_score_and_the_judge_cost():
     got = results(judged)
     assert (got['A1'].value, got['A2'].value, got['score']) == (True, False, 0.6)
     assert got['judge_cost_usd'] > 0
+
+
+def test_run_returns_the_trace_and_a_cost_offline():
+    # TestModel has no price, so the cost is 0; the run must still come back whole.
+    with agent.override(model=TestModel(call_tools=[])):
+        ran = asyncio.run(run('hello'))
+    assert set(ran) == {'agent_steps', 'final_result', 'screenshots_b64', 'agent_cost_usd'}
+    assert ran['agent_cost_usd'] == 0.0
