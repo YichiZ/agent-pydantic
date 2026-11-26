@@ -22,4 +22,4 @@ wheels/
 .coverage
 
 # Browser agent eval: the user's clone of the BU Bench repo
-agents/browser/.benchmark/
+agents/browser/evals/.benchmark/

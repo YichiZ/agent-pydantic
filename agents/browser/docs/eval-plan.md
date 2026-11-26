@@ -23,7 +23,7 @@ on `python -m agents browser`, screenshots as evidence, saved runs, a baseline f
 | Trials | One argument: the number of trials, default 1. The baseline is 3. |
 | Baseline | A line in `agents/browser/README.md`: each trial's score, the date, the benchmark commit. Compared by eye. |
 | Cost | About $3.72 per trial for the agent plus one judge call. Baseline of 3: about $11 plus judge calls. |
-| Invocation | `uv run --env-file .env python -m agents.browser.eval [trials]`. `agent.py` and `agents/__main__.py` are not touched. |
+| Invocation | `uv run --env-file .env python -m agents.browser.evals.run [trials]`. `agent.py` and `agents/__main__.py` are not touched. |
 
 Approaches considered for the judge: our own judge on GPT or on Claude with the same rubric and arithmetic
 (nothing to fetch, but the score would not be a BU Bench score), and the official code (chosen). Adding
@@ -33,9 +33,9 @@ model SDK versions, and the benchmark repo has no licence.
 ## Files
 
 ```
-agents/browser/eval.py                  # the whole eval, about 60 lines
+agents/browser/evals/run.py                # the whole eval, about 60 lines
 agents/browser/tests/test_eval.py       # one offline test
-agents/browser/.benchmark/              # gitignored: the user's clone of the benchmark
+agents/browser/evals/.benchmark/        # gitignored: the user's clone of the benchmark
 ```
 
 Also: `.gitignore` gets `.benchmark/`, `pyproject.toml` declares `cryptography` (already installed, used to
@@ -52,7 +52,7 @@ read the task text), and `agents/browser/README.md` gets the setup command, the 
    - `screenshots_b64`: empty.
 4. The evaluator writes the trace to a temporary file and runs, with the clone as the working directory,
    `uv run --project .benchmark python -c <snippet> bu2-052 <trace file>`. The snippet is a five-line constant
-   in `eval.py` that calls the benchmark's `load_tasks`, `create_judge` and `judge_trace` and prints the result
+   in `evals/run.py` that calls the benchmark's `load_tasks`, `create_judge` and `judge_trace` and prints the result
    as JSON.
 5. The evaluator returns one pass/fail per rubric item (met or not, with the judge's evidence as the reason)
    and `score`. A judge error fails the trial; it is not scored as zero.
@@ -60,9 +60,9 @@ read the task text), and `agents/browser/README.md` gets the setup command, the 
 ## Commands and output
 
 ```bash
-git clone https://github.com/browser-use/benchmark agents/browser/.benchmark   # once
-git -C agents/browser/.benchmark checkout 77b4df3                              # the pinned commit
-uv run --env-file .env python -m agents.browser.eval 3                         # three trials
+git clone https://github.com/browser-use/benchmark agents/browser/evals/.benchmark   # once
+git -C agents/browser/evals/.benchmark checkout 77b4df3                              # the pinned commit
+uv run --env-file .env python -m agents.browser.evals.run 3                         # three trials
 ```
 
 Prints the Pydantic Evals report: per trial, ten pass/fail items with the judge's reasons and a score, then the
@@ -75,7 +75,7 @@ One offline test, no network and no model: a small hand-built message history be
 
 ## Build order
 
-1. `eval.py` trace building and its test.
+1. `evals/run.py` trace building and its test.
 2. The judge subprocess and the evaluator. Check that the clone's environment installs with `uv run --project`.
 3. One live trial, about $4. Needs the user's go-ahead.
 4. Two more trials for the baseline, about $8. Needs the user's go-ahead. Write the baseline into the README.

@@ -1,4 +1,4 @@
-"""Browser agent eval on BU Bench task 52 (docs/eval-plan.md).  uv run --env-file .env python -m agents.browser.eval"""
+"""Browser agent eval on BU Bench task 52 (../docs/eval-plan.md).  uv run --env-file .env python -m agents.browser.evals.run"""
 
 import asyncio
 import base64

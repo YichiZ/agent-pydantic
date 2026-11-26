@@ -8,7 +8,7 @@ from pydantic_ai.messages import (
     UserPromptPart,
 )
 
-from agents.browser.eval import trace
+from agents.browser.evals.run import trace
 
 
 def test_trace_keeps_tool_calls_results_and_text_in_order():
