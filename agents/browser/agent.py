@@ -29,16 +29,8 @@ def config() -> dict:
 def configured(key: str | None = None) -> Agent:
     """The agent for one entry of config.yaml; the `default` entry without a key."""
     loaded = config()
-    models = loaded.get('models') or {}
-    if key is None and 'default' not in loaded:
-        raise ValueError(f'{CONFIG} has no `default`.')
-    key = loaded['default'] if key is None else key
-    if key not in models:
-        raise ValueError(f'No model {key!r} in {CONFIG}. Valid keys: {", ".join(models)}')
-    missing = [field for field in ('model', 'name') if not (models[key] or {}).get(field)]
-    if missing:
-        raise ValueError(f'Model {key!r} in {CONFIG} has no {" or ".join(missing)}.')
-    return make_agent(models[key]['model'], models[key]['name'])
+    entry = loaded['models'][key or loaded['default']]
+    return make_agent(entry['model'], entry['name'])
 
 
 agent = configured()

@@ -44,19 +44,3 @@ def test_the_default_config_entry_is_sonnet():
 def test_a_config_key_picks_the_model_and_name():
     terra = configured('6.1-terra')
     assert (terra.model, terra.name) == ('openai:gpt-6.1-terra', 'browser-agent-terra')
-
-
-def test_an_unknown_key_names_the_valid_ones():
-    with pytest.raises(ValueError, match=r"'nope'.*sonnet-5\.5, 6\.1-terra"):
-        configured('nope')
-
-
-def test_a_broken_config_entry_is_named(monkeypatch, tmp_path):
-    broken = tmp_path / 'config.yaml'
-    broken.write_text('default: a\nmodels:\n  a:\n    model: test\n')
-    monkeypatch.setattr('agents.browser.agent.CONFIG', broken)
-    with pytest.raises(ValueError, match="'a'.*name"):
-        configured()
-    broken.write_text('models:\n  a:\n    model: test\n    name: a\n')
-    with pytest.raises(ValueError, match='default'):
-        configured()
