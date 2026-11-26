@@ -11,6 +11,7 @@ dependencies = [
     "pydantic-ai>=2.71.0",
     "pydantic-ai-harness[playwright]>=0.75.0",
     "python-dotenv>=1.2.4",
+    "pyyaml>=6.0.4",
 ]
 
 [dependency-groups]

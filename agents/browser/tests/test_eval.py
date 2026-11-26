@@ -1,5 +1,7 @@
 import asyncio
 
+import pytest
+
 from pydantic_ai.messages import (
     ModelRequest,
     ModelResponse,
@@ -12,7 +14,7 @@ from pydantic_ai.messages import (
 from pydantic_ai.models.test import TestModel
 
 from agents.browser.agent import agent
-from agents.browser.evals.run import results, run, trace
+from agents.browser.evals.run import main, results, run, trace
 
 
 def test_trace_keeps_tool_calls_results_and_text_in_order():
@@ -60,3 +62,10 @@ def test_run_returns_the_trace_and_a_cost_offline():
         ran = asyncio.run(run('hello'))
     assert set(ran) == {'agent_steps', 'final_result', 'screenshots_b64', 'agent_cost_usd'}
     assert ran['agent_cost_usd'] == 0.0
+
+
+def test_model_flag_rejects_an_unknown_key_before_anything_runs(capsys):
+    with pytest.raises(SystemExit) as stopped:
+        main(['--model', 'nope'])
+    assert stopped.value.code == 2
+    assert '6.1-terra' in capsys.readouterr().err

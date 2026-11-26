@@ -1,0 +1,12 @@
+# The models the browser agent can run on. `model` is the full Pydantic AI model string; `name` is the agent's
+# name in traces. Chat uses `default`; the eval picks an entry with --model.
+default: sonnet-5.5
+
+models:
+  sonnet-5.5:
+    model: anthropic:claude-sonnet-5-5
+    name: browser-agent-sonnet
+  6.1-terra:
+    # openai:, not openai-chat:. Chat Completions rejects tools while reasoning is on for this model.
+    model: openai:gpt-6.1-terra
+    name: browser-agent-terra
