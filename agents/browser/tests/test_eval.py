@@ -8,7 +8,7 @@ from pydantic_ai.messages import (
     UserPromptPart,
 )
 
-from agents.browser.evals.run import trace
+from agents.browser.evals.run import results, trace
 
 
 def test_trace_keeps_tool_calls_results_and_text_in_order():
@@ -35,3 +35,16 @@ def test_trace_keeps_tool_calls_results_and_text_in_order():
         'final_result': 'It says Example Domain.',
         'screenshots_b64': [],
     }
+
+
+def test_results_gives_each_item_the_score_and_the_judge_cost():
+    judged = {
+        'score': 0.6,
+        'judgement': {'findings': [{'item': 'A1', 'status': 'met', 'evidence': 'seen'},
+                                   {'item': 'A2', 'status': 'not_assessable', 'evidence': 'clipped'}]},
+        'judge_model': 'gpt-5.6-luna',
+        'judge_tokens': {'input': 60_000, 'output': 20_000},
+    }
+    got = results(judged)
+    assert (got['A1'].value, got['A2'].value, got['score']) == (True, False, 0.6)
+    assert got['judge_cost_usd'] > 0

@@ -17,7 +17,7 @@ uv run --env-file .env pytest -m e2e agents/browser         # live test against 
 
 Task `bu2-052` of [BU Bench V2.1](https://github.com/browser-use/benchmark), scored by the benchmark's own judge:
 see `evals/run.py` and [docs/eval-plan.md](docs/eval-plan.md). A trial costs about $4 for the agent plus one OpenAI
-judge call, and needs `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` in `.env`.
+judge call; the report shows both as `agent_cost_usd` and `judge_cost_usd`. It needs `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` in `.env`.
 
 ```bash
 git clone https://github.com/browser-use/benchmark agents/browser/evals/.benchmark   # once; gitignored

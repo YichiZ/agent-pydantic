@@ -14,6 +14,7 @@ from pathlib import Path
 
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
+from genai_prices import Usage, calc_price
 from pydantic_ai.messages import ModelMessage, TextPart, ToolCallPart, ToolReturnPart
 from pydantic_evals import Case, Dataset
 from pydantic_evals.evaluators import EvaluationReason, Evaluator, EvaluatorContext
@@ -28,7 +29,15 @@ JUDGE_SNIPPET = """
 import asyncio, json, sys
 from evaluation import load_tasks, create_judge, judge_trace
 task = next(t for t in load_tasks() if t['task_id'] == sys.argv[1])
-print(json.dumps(asyncio.run(judge_trace(task, json.load(open(sys.argv[2])), create_judge()))))
+llm, tokens = create_judge(), {}
+call = llm.ainvoke
+async def counted(*args, **kwargs):  # judge_trace does not return the judge's token usage, so note it here
+    response = await call(*args, **kwargs)
+    tokens.update(input=response.usage.prompt_tokens, output=response.usage.completion_tokens)
+    return response
+llm.ainvoke = counted
+judged = asyncio.run(judge_trace(task, json.load(open(sys.argv[2])), llm))
+print(json.dumps({**judged, 'judge_model': llm.model, 'judge_tokens': tokens}))
 """
 
 
@@ -54,14 +63,19 @@ def trace(messages: Sequence[ModelMessage], answer: str) -> dict:
 
 async def run(prompt: str) -> dict:
     result = await agent.run(prompt)
-    return trace(result.all_messages(), result.output)
+    # The judge ignores keys it does not know, so the agent's cost rides along to the evaluator.
+    return {**trace(result.all_messages(), result.output), 'agent_cost_usd': float(result.usage().cost)}
 
 
 def results(judged: dict) -> dict:
-    """The judge's output as Pydantic Evals results: pass/fail per rubric item, and the score (0 to 1)."""
+    """The judge's output as Pydantic Evals results: pass/fail per rubric item, the score (0 to 1), and what the
+    judge call cost, priced from its token counts."""
     findings = judged['judgement']['findings']
     items = {f['item']: EvaluationReason(value=f['status'] == 'met', reason=f['evidence']) for f in findings}
-    return {**items, 'score': judged['score']}
+    tokens = judged['judge_tokens']
+    price = calc_price(Usage(input_tokens=tokens['input'], output_tokens=tokens['output']),
+                       model_ref=judged['judge_model'], provider_id='openai')
+    return {**items, 'score': judged['score'], 'judge_cost_usd': float(price.total_price)}
 
 
 @dataclass
@@ -76,7 +90,8 @@ class BUBenchJudge(Evaluator):
                                            text=True)
         if done.returncode:  # a judge error fails the trial; it is not scored as zero
             raise RuntimeError(f'The judge exited with {done.returncode}:\n{done.stderr[-2000:]}')
-        return results(json.loads(done.stdout.splitlines()[-1]))  # the snippet prints its JSON last
+        judged = json.loads(done.stdout.splitlines()[-1])  # the snippet prints its JSON last
+        return {**results(judged), 'agent_cost_usd': ctx.output['agent_cost_usd']}
 
 
 def main(argv: Sequence[str] | None = None) -> int:
