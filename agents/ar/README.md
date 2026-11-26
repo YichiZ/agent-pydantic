@@ -4,13 +4,13 @@ An accounts receivable agent, built with [Pydantic AI](https://pydantic.dev/docs
 It handles collections reminders, cash application, and disputes and deductions for one tenant.
 The eval set is built first and is the specification for the agent that follows.
 
-![AR coworker architecture](docs/ar-coworker-design.svg)
+![AR agent architecture](docs/ar-agent-design.svg)
 
 ## Status
 
 The agent, the eval runner and a saved baseline exist.
 
-- Built: [design](docs/ar-coworker-design.md), [implementation plan](docs/ar-coworker-implementation.md),
+- Built: [design](docs/ar-agent-design.md), [implementation plan](docs/ar-agent-implementation.md),
   synthetic AR database, eval set of 21 tasks, data model and ledger, 15 policy rules, 15 tools,
   the agent (one Pydantic AI orchestrator on Opus 5.5 with three capabilities loaded on demand), and the
   eval runner.
@@ -81,8 +81,8 @@ Events are not scored: there is no reference answer, so the command prints what 
 - Each task is labelled with its flow, expected disposition and whether a person must be involved.
 
 Details are in [`db/README.md`](db/README.md) and section 2 of the
-[implementation plan](docs/ar-coworker-implementation.md). The design is in
-[`docs/ar-coworker-design.md`](docs/ar-coworker-design.md).
+[implementation plan](docs/ar-agent-implementation.md). The design is in
+[`docs/ar-agent-design.md`](docs/ar-agent-design.md).
 
 ## Flows
 

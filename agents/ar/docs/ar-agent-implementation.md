@@ -1,8 +1,8 @@
-# AR coworker: implementation plan
+# AR agent: implementation plan
 
 Status: 2026-11-24. All six pieces are built and a baseline is saved: 20 of 20 tasks pass on each
 of 4 trials on Opus 5.5. Task 21 was added after the baseline and is not in it. This document is
-the plan as written before the build; where the build differs, the code and `README.md` are right. The design is in [ar-coworker-design.md](ar-coworker-design.md).
+the plan as written before the build; where the build differs, the code and `README.md` are right. The design is in [ar-agent-design.md](ar-agent-design.md).
 
 ## 1. Summary
 

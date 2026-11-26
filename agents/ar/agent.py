@@ -1,4 +1,4 @@
-"""The AR coworker: one Pydantic AI agent over the 15 tools, and `run_turn`, which implements `agents.ar.run_types.AgentFn`.
+"""The AR agent: one Pydantic AI agent over the 15 tools, and `run_turn`, which implements `agents.ar.run_types.AgentFn`.
 
 The instructions on every run are the base rules (`agents/ar/db/policy/base.md`), plus `agents/ar/db/policy/chat.md`
 in a chat. A flow's own rules come with its capability when the model loads it. Tools and capabilities are in

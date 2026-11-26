@@ -1,4 +1,4 @@
-# The AR coworker's flows
+# The AR agent's flows
 
 One event starts one run for one customer account. The agent reads the account, decides, and
 proposes writes through its tools; policy code (`agents/ar/policy.py`, rules P1 to P15) decides whether

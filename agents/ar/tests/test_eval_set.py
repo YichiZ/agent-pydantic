@@ -7,7 +7,7 @@ import pytest
 
 DB = Path(__file__).resolve().parent.parent / 'db'
 
-# Tool name -> argument names, from the Piece D table in agents/ar/docs/ar-coworker-implementation.md.
+# Tool name -> argument names, from the Piece D table in agents/ar/docs/ar-agent-implementation.md.
 TOOLS = {
     'get_account_state': set(),
     'list_open_invoices': set(),

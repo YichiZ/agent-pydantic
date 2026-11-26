@@ -1,8 +1,8 @@
-# AR coworker: design
+# AR agent: design
 
 Status: draft for review, 2026-11-23. The database is in `agents/ar/db/`, the agent in `agents/ar/` and the eval runner in `agents/ar/evals/`.
 
-An AI coworker that runs accounts receivable for one tenant: it chases overdue invoices, applies
+An AI agent that runs accounts receivable for one tenant: it chases overdue invoices, applies
 incoming cash, and handles disputes and deductions. This document starts with the eval suite and
 the synthetic dataset behind it, then covers the system design. Accounts payable is out of scope;
 it is the mirror image on the same skeleton.
@@ -190,7 +190,7 @@ tests/
 ```
 
 The build order, tool arguments and per-task end states are in
-[ar-coworker-implementation.md](ar-coworker-implementation.md).
+[ar-agent-implementation.md](ar-agent-implementation.md).
 
 ### 2.1 Tables
 
@@ -301,7 +301,7 @@ Goals:
 - Never act on stale account state. The motivating bug: one agent applies a credit, another then
   asks the customer for the old amount.
 - Every write to the ERP is safe to retry, attributable and reviewable.
-- A tenant controls how much the coworker does alone, per action, channel and customer segment.
+- A tenant controls how much the agent does alone, per action, channel and customer segment.
 - A failure found in production becomes a test case and a harness fix.
 
 Non-goals for the first version:
@@ -313,7 +313,7 @@ Non-goals for the first version:
 
 ## 4. Design in one picture
 
-![AR coworker architecture](ar-coworker-design.svg)
+![AR agent architecture](ar-agent-design.svg)
 
 Say it in three sentences: one orchestrator per customer account, run serially per account, with
 capabilities loaded on demand. Every write passes a policy layer written in code, then an outbox. Amounts
@@ -429,7 +429,7 @@ decision and the run that produced it.
 
 ### 5.8 Review surface
 
-Where finance teams work with the coworker: the approval queue, the rule editor, and a trace view
+Where finance teams work with the agent: the approval queue, the rule editor, and a trace view
 that answers "what happened and why" for any invoice. Each approval, edit or rejection is stored as
 a labelled example.
 

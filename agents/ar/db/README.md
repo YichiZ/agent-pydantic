@@ -36,7 +36,7 @@ Each account holds one piece of actionable work, for one eval task, plus distrac
 plainly not actionable, such as an invoice that is not yet due. An agent run acts on one event,
 so a second piece of real work on the same account would make a correct run look wrong. Two disputes
 are used at more than one moment: Fennick's by three tasks, and Juniper's by two, open and then
-rejected. The task list is in `docs/ar-coworker-implementation.md`.
+rejected. The task list is in `docs/ar-agent-implementation.md`.
 
 ## The eval set
 
