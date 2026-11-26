@@ -5,7 +5,7 @@ under `agents/`. Each agent keeps its own data, evals, tests and docs in its pac
 
 ## Agents
 
-- [`ar`](agents/ar/README.md): an AI coworker for accounts receivable (collections reminders, cash
+- [`ar`](agents/ar/README.md): an accounts receivable agent (collections reminders, cash
   application, disputes and deductions), with its eval set and baseline.
 
 ## Run

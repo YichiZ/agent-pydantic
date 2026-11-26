@@ -1,6 +1,6 @@
-# AR coworker
+# Accounts receivable agent
 
-An AI coworker for accounts receivable, built with [Pydantic AI](https://pydantic.dev/docs/ai/overview/).
+An accounts receivable agent, built with [Pydantic AI](https://pydantic.dev/docs/ai/overview/).
 It handles collections reminders, cash application, and disputes and deductions for one tenant.
 The eval set is built first and is the specification for the agent that follows.
 
