@@ -1,1 +1,1 @@
-"""Collections agent (accounts receivable): data model, ledger, policy and tools (the agent comes later)."""
+"""Collections agent (accounts receivable): data model, ledger, policy, tools and agent."""

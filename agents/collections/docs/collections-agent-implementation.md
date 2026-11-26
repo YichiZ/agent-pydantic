@@ -189,7 +189,7 @@ Files stay under about 300 lines. If `tools.py` passes that, split it into read 
 
 ## 4. Conventions
 
-- **No mutation.** `ArDb` and its rows are frozen Pydantic models. A write returns a new `ArDb`.
+- **No mutation.** `CollectionsDb` and its rows are frozen Pydantic models. A write returns a new `CollectionsDb`.
   The one mutable thing is a small `Store` holding the current value, which tools swap. Target
   and actual states are then two values to compare, and a per-task copy is free.
 - **Money is `Decimal`**, parsed from the two-decimal strings in `db.json`.
@@ -214,7 +214,7 @@ executable at the end of piece D.
 ### Piece B: data model and ledger
 
 `agents/collections/data_model.py`: one frozen model per table, enumerations for every status and the eight
-dispute categories, and `ArDb` with a loader that unwraps `{"data", "notes"}`.
+dispute categories, and `CollectionsDb` with a loader that unwraps `{"data", "notes"}`.
 
 `agents/collections/ledger.py`, pure functions:
 
@@ -424,10 +424,10 @@ merged with a merge commit so the working branch stays a clean ancestor. Message
 | When | Commit |
 |---|---|
 | before wave 1 | `docs: AR coworker design and implementation plan`, with the bank agent removal and `db/db.json` |
-| wave 1 | `feat: collections eval set of 20 tasks` |
-| wave 2 | `feat: collections data model and ledger` |
+| wave 1 | `feat: AR eval set of 20 tasks` |
+| wave 2 | `feat: AR data model and ledger` |
 | wave 3 | `feat: AR policy rules and tools` |
-| wave 4 | `feat: collections agent and eval runner` |
+| wave 4 | `feat: AR agent and eval runner` |
 | wave 5 | `feat: AR eval baseline`, plus one `fix:` commit per harness fix |
 | wave 6 | `fix:` or `refactor:` commits from review |
 

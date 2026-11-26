@@ -8,7 +8,7 @@ import pytest
 
 from agents.collections.data_model import (
     ApprovalStatus,
-    ArDb,
+    CollectionsDb,
     CreditStatus,
     DisputeStatus,
     InvoiceStatus,
@@ -31,10 +31,10 @@ def run(store: Store, customer_id: str, name: str, **arguments: Any) -> Any:
     return result
 
 
-def changes(before: ArDb, after: ArDb) -> dict[str, set[str]]:
+def changes(before: CollectionsDb, after: CollectionsDb) -> dict[str, set[str]]:
     """Ids added, changed or removed, per table."""
     found = {}
-    for name in ArDb.model_fields:
+    for name in CollectionsDb.model_fields:
         old, new = before.table(name), after.table(name)
         ids = {key for key in new if old.get(key) != new[key]} | {key for key in old if key not in new}
         if ids:

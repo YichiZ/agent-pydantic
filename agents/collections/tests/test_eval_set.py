@@ -1,4 +1,4 @@
-"""Offline checks on the collections eval set in agents/collections/db/: tasks, splits, documents and the ids they name."""
+"""Offline checks on the eval set in agents/collections/db/: tasks, splits, documents and the ids they name."""
 import json
 import re
 from pathlib import Path

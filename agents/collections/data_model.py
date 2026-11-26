@@ -1,6 +1,6 @@
-"""Typed, immutable view of the collections database in `agents/collections/db/db.json`.
+"""Typed, immutable view of the accounts receivable database in `agents/collections/db/db.json`.
 
-Every row and the database itself are frozen. A write builds a new `ArDb` with `with_rows`.
+Every row and the database itself are frozen. A write builds a new `CollectionsDb` with `with_rows`.
 Money is a non-negative `Decimal` with at most two places, dumped back as a two-decimal string.
 """
 
@@ -132,7 +132,7 @@ class _Frozen(BaseModel):
 
 
 class Row(_Frozen):
-    """A frozen table row. Revalidated whenever it is put into an `ArDb`, so `model_copy` edits are checked."""
+    """A frozen table row. Revalidated whenever it is put into an `CollectionsDb`, so `model_copy` edits are checked."""
 
     model_config = ConfigDict(revalidate_instances='always')
     id_field: ClassVar[str]
@@ -348,7 +348,7 @@ class ActionLogEntry(Row):
     reason: str
 
 
-class ArDb(_Frozen):
+class CollectionsDb(_Frozen):
     """The whole database: one `{id: row}` mapping per table, named as in db.json."""
 
     tenants: Mapping[str, Tenant]
@@ -447,7 +447,7 @@ ID_SEQUENCES: Mapping[str, tuple[str, int]] = MappingProxyType({
 })
 
 
-def next_id(db: ArDb, table_name: str) -> str:
+def next_id(db: CollectionsDb, table_name: str) -> str:
     """The table's id prefix plus its largest number plus one, e.g. `apr_8000` -> `apr_8001`; an empty table starts
     at its first number. A table with no id sequence raises `UnknownTableError`."""
     if table_name not in ID_SEQUENCES:

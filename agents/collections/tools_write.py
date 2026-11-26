@@ -13,7 +13,7 @@ from agents.collections.data_model import (
     Application,
     Approval,
     ApprovalStatus,
-    ArDb,
+    CollectionsDb,
     Channel,
     Credit,
     CreditApproval,
@@ -81,7 +81,7 @@ def send_message(store: Store, customer_id: str, contact_id: str, channel: str, 
                   f'Sent {message.message_id} to {contact_id} by {medium}, asking for {draft.amount}.')
 
 
-def write_message(db: ArDb, draft: MessageDraft) -> tuple[ArDb, Message]:
+def write_message(db: CollectionsDb, draft: MessageDraft) -> tuple[CollectionsDb, Message]:
     """The outbound message row for a draft, with the amount due stamped from the ledger now."""
     message = Message(
         message_id=next_id(db, 'messages'), customer_id=db.contact(draft.contact_id).customer_id,
@@ -125,7 +125,7 @@ def apply_payment(store: Store, customer_id: str, payment_id: str, invoice_id: s
                   'payment is left.')
 
 
-def _hold_payment(store: Store, db: ArDb, customer_id: str, payment_id: str, rule: str, reason: str) -> WriteResult:
+def _hold_payment(store: Store, db: CollectionsDb, customer_id: str, payment_id: str, rule: str, reason: str) -> WriteResult:
     """One pending approval per payment, listing every candidate, whichever one the caller named."""
     pending = next((a for a in db.approvals.values() if a.action == 'apply_payment'
                     and a.status is ApprovalStatus.PENDING and a.payload.get('payment_id') == payment_id), None)
@@ -200,7 +200,7 @@ def decide_approval(store: Store, approval_id: str, decision: str, decided_by: s
                   f'{approval_id} {status} by {reviewer}.', actor=reviewer)
 
 
-def _linked_credits(db: ArDb, approval: Approval) -> dict[str, Credit]:
+def _linked_credits(db: CollectionsDb, approval: Approval) -> dict[str, Credit]:
     status = CREDIT_AFTER[approval.status]
     return {c.credit_id: c.model_copy(update={'status': status}) for c in db.credits.values()
             if c.approval_id == approval.approval_id and c.status is CreditStatus.PROPOSED}

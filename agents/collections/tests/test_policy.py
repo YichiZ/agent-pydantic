@@ -4,7 +4,7 @@ from decimal import Decimal
 
 import pytest
 
-from agents.collections.data_model import Application, ApprovalStatus, ArDb, AutonomyLevel, Channel
+from agents.collections.data_model import Application, ApprovalStatus, CollectionsDb, AutonomyLevel, Channel
 from agents.collections.environment import call_env_function, call_tool, fresh_store
 from agents.collections.evals.tasks import DB_PATH, DOCUMENTS_DIR
 from agents.collections.policy import (
@@ -22,18 +22,18 @@ from agents.collections.policy import (
 )
 
 
-def send(db: ArDb, customer_id: str, contact_id: str, invoice_ids: list[str], body: str,
+def send(db: CollectionsDb, customer_id: str, contact_id: str, invoice_ids: list[str], body: str,
          channel: Channel = Channel.EMAIL) -> Decision:
     return check_send_message(
         db, customer_id, contact_id=contact_id, channel=channel, invoice_ids=invoice_ids, body=body,
     )
 
 
-def apply(db: ArDb, customer_id: str, payment_id: str, invoice_id: str, amount: str) -> Decision:
+def apply(db: CollectionsDb, customer_id: str, payment_id: str, invoice_id: str, amount: str) -> Decision:
     return check_apply_payment(db, customer_id, payment_id=payment_id, invoice_id=invoice_id, amount=Decimal(amount))
 
 
-def credit(db: ArDb, customer_id: str, dispute_id: str, amount: str) -> Decision:
+def credit(db: CollectionsDb, customer_id: str, dispute_id: str, amount: str) -> Decision:
     return check_propose_credit(db, customer_id, dispute_id=dispute_id, amount=Decimal(amount))
 
 

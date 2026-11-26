@@ -1,4 +1,4 @@
-"""Run the collections eval set against the agent; print each task, the grid, and the change from the baseline.
+"""Run the eval set against the agent; print each task, the grid, and the change from the baseline.
 
     uv run python -m agents collections eval                       # all 21 tasks, one trial
     uv run python -m agents collections eval --trials 4            # pass^4

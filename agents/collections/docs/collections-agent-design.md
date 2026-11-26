@@ -170,10 +170,10 @@ configurations reach 0.14 to 0.41, so email results do not carry over.
 Production defect or human edit → trace → new task or component case → fix in a tool, guardrail,
 rule or prompt → gate → baseline updated.
 
-## 2. Dataset: a collections domain in tau2 layout
+## 2. Dataset: an accounts receivable domain in tau2 layout
 
 tau2-bench has six domains (`mock`, `airline`, `retail`, `telecom`, `banking_knowledge`, `intake`)
-and none covers receivables. The collections domain is synthetic and follows tau2's layout and task schema
+and none covers receivables. The accounts receivable domain is synthetic and follows tau2's layout and task schema
 so it stays portable.
 
 ```
@@ -291,7 +291,7 @@ The bank support agent that used to live in this repo has been removed (it is in
 - A typed Pydantic view of the database, with money as `Decimal`.
 - `evals/scoreboard.py`: pass rate, cost and latency against a baseline, to be extended with pass^k.
 
-Collections tasks need a writable in-memory copy of the database per task, which the bank agent never had.
+All tasks need a writable in-memory copy of the database per task, which the bank agent never had.
 
 ## 3. Goals and non-goals
 

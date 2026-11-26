@@ -1,6 +1,6 @@
 """The part of the database a run is scored on (plan section 2.2), and a compact diff of two of them.
 
-The projection is `ArDb.dump()` without the action log and without the free text a tool stores in
+The projection is `CollectionsDb.dump()` without the action log and without the free text a tool stores in
 the agent's own words. Ids, amounts, statuses, invoice ids and dates are kept: the tools make ids
 from each table's sequence and dates from `as_of_date`, so they do not vary between correct runs,
 except where one run may write several rows of a table in any order (see `NATURAL_KEYS`).
@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from agents.collections.data_model import ArDb
+from agents.collections.data_model import CollectionsDb
 
 type Projection = dict[str, dict[str, dict[str, Any]]]
 
@@ -48,7 +48,7 @@ def diff_text(d: TableDiff) -> str:
     return ' '.join([d.table, *(f'+{i}' for i in d.added), *(f'-{i}' for i in d.removed), *(f'~{c}' for c in d.changed)])
 
 
-def project(db: ArDb) -> Projection:
+def project(db: CollectionsDb) -> Projection:
     return {name: _rekey(name, {row_id: _strip_row(name, row) for row_id, row in rows.items()})
             for name, rows in db.dump().items() if name not in IGNORED_TABLES}
 

@@ -1,4 +1,4 @@
-"""Run the collections eval set: one trial of one task, and many tasks times k trials (plan, Piece E).
+"""Run the eval set: one trial of one task, and many tasks times k trials (plan, Piece E).
 
 A trial starts two fresh stores and replays the task's initial state on both. TARGET then replays
 the reference actions; ACTUAL runs the agent (one solo turn on the ticket, or a chat with the
@@ -23,7 +23,7 @@ from pydantic_evals import Case, Dataset
 from pydantic_evals.dataset import increment_eval_metric
 
 from agents.collections.assertions import human_marks
-from agents.collections.data_model import ArDb, UnknownIdError
+from agents.collections.data_model import CollectionsDb, UnknownIdError
 from agents.collections.environment import call_env_function, call_tool, check_assertion, fresh_store
 from agents.collections.errors import TOOL_ERRORS
 from agents.collections.evals.judge import JudgeFn, score_tone
@@ -82,11 +82,11 @@ def check_reference(task: Task) -> None:
         raise HarnessError(f'{task.id}: its initial state or reference path fails: {error}') from error
 
 
-def failed_assertions(db: ArDb, task: Task) -> tuple[str, ...]:
+def failed_assertions(db: CollectionsDb, task: Task) -> tuple[str, ...]:
     return tuple(a.label() for a in task.evaluation_criteria.env_assertions if not _holds(db, a))
 
 
-def _holds(db: ArDb, assertion: Assertion) -> bool:
+def _holds(db: CollectionsDb, assertion: Assertion) -> bool:
     try:
         return check_assertion(db, assertion.func_name, assertion.arguments) == assertion.assert_value
     except UnknownIdError:  # the row it checks was never written, so the check fails

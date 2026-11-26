@@ -1,4 +1,4 @@
-# Collections database
+# Accounts receivable database
 
 `db.json` is a synthetic accounts receivable database for one tenant, Harborline Industrial Supply.
 Every company, person and amount in it is invented. It was written for this repo; tau2-bench has no

@@ -1,6 +1,6 @@
 """What every tool shares: argument parsing at the boundary, the write result, and committing a write.
 
-A write builds a new `ArDb`, appends one action log row and swaps it into the store in one step,
+A write builds a new `CollectionsDb`, appends one action log row and swaps it into the store in one step,
 so a refused write never leaves anything behind.
 """
 
@@ -17,7 +17,7 @@ from agents.collections.data_model import (
     ActionLogEntry,
     Approval,
     ApprovalStatus,
-    ArDb,
+    CollectionsDb,
     InvoiceStatus,
     Row,
     next_id,
@@ -107,12 +107,12 @@ class WriteResult(BaseModel):
     row: dict[str, Any]
 
 
-def log_entry(db: ArDb, action: str, target_id: str, reason: str, actor: str = COWORKER) -> ActionLogEntry:
+def log_entry(db: CollectionsDb, action: str, target_id: str, reason: str, actor: str = COWORKER) -> ActionLogEntry:
     return ActionLogEntry(action_id=next_id(db, 'action_log'), at=db.today, actor=actor, action=action,
                           target_id=target_id, reason=reason)
 
 
-def commit(store: Store, db: ArDb, action: str, row: Row, reason: str, message: str,
+def commit(store: Store, db: CollectionsDb, action: str, row: Row, reason: str, message: str,
            actor: str = COWORKER) -> WriteResult:
     """Append one action log row to `db`, swap it in, and report `row` as the write's main row."""
     entry = log_entry(db, action, row.row_id, reason, actor)
@@ -124,7 +124,7 @@ def unchanged(row: Row, message: str) -> WriteResult:
     return WriteResult(status='unchanged', message=message, target_id=row.row_id, row=row.model_dump(mode='json'))
 
 
-def hold(store: Store, db: ArDb, customer_id: str, action: str, payload: Mapping[str, JsonValue], rule: str | None,
+def hold(store: Store, db: CollectionsDb, customer_id: str, action: str, payload: Mapping[str, JsonValue], rule: str | None,
          reason: str, target_id: str | None = None) -> WriteResult:
     """Write one pending approval (and its log row) instead of the write itself."""
     approval = Approval(
@@ -151,14 +151,14 @@ def held(approval: Approval, rule: str | None, target_id: str | None = None, rep
 
 # Invoice state that follows from the ledger.
 
-def mark_paid_if_settled(db: ArDb, invoice_id: str) -> ArDb:
+def mark_paid_if_settled(db: CollectionsDb, invoice_id: str) -> CollectionsDb:
     invoice = db.invoice(invoice_id)
     if invoice.status is InvoiceStatus.PAID or balance(db, invoice_id) != 0:
         return db
     return db.with_rows('invoices', {invoice_id: invoice.model_copy(update={'status': InvoiceStatus.PAID})})
 
 
-def resume_if_undisputed(db: ArDb, invoice_id: str) -> ArDb:
+def resume_if_undisputed(db: CollectionsDb, invoice_id: str) -> CollectionsDb:
     """Unpause collections once the invoice has no open dispute left."""
     invoice = db.invoice(invoice_id)
     if not invoice.collections_paused or has_open_dispute(db, invoice_id):

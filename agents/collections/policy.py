@@ -1,4 +1,4 @@
-"""Policy rules P1-P15 as pure functions over an `ArDb`. No I/O, no clock, no writes.
+"""Policy rules P1-P15 as pure functions over an `CollectionsDb`. No I/O, no clock, no writes.
 
 Each `check_*` takes the database, the run's customer id and the proposed write, and returns a
 `Decision`: allow, needs approval or deny, with the rule id and a sentence the model can act on.
@@ -16,7 +16,7 @@ from enum import StrEnum
 from agents.collections.data_model import (
     Approval,
     ApprovalStatus,
-    ArDb,
+    CollectionsDb,
     AutonomyLevel,
     Channel,
     Contact,
@@ -64,11 +64,11 @@ def first_failure(decisions: Iterable[Decision]) -> Decision:
 
 # Shared reads.
 
-def remittance_for(db: ArDb, payment_id: str) -> Remittance | None:
+def remittance_for(db: CollectionsDb, payment_id: str) -> Remittance | None:
     return next((r for r in db.remittances.values() if r.payment_id == payment_id), None)
 
 
-def last_outbound_date(db: ArDb, customer_id: str) -> date | None:
+def last_outbound_date(db: CollectionsDb, customer_id: str) -> date | None:
     family = set(payer_family(db, customer_id))
     sent = [m.sent_at for m in db.messages.values() if m.customer_id in family and m.direction is MessageDirection.OUTBOUND]
     return max(sent, default=None)
@@ -82,7 +82,7 @@ def amounts_in(text: str) -> tuple[Decimal, ...]:
     return tuple(Decimal(found.replace(',', '')) for found in _NUMBER.findall(text))
 
 
-def payment_candidates(db: ArDb, payment_id: str) -> tuple[str, ...]:
+def payment_candidates(db: CollectionsDb, payment_id: str) -> tuple[str, ...]:
     """For a payment with no remittance: open invoices in the payer's family whose balance equals what is left."""
     if remittance_for(db, payment_id) is not None:
         return ()
@@ -93,7 +93,7 @@ def payment_candidates(db: ArDb, payment_id: str) -> tuple[str, ...]:
 
 # P11: scope.
 
-def check_scope(db: ArDb, customer_id: str, owner_id: str, what: str) -> Decision:
+def check_scope(db: CollectionsDb, customer_id: str, owner_id: str, what: str) -> Decision:
     """P11: `what`, owned by `owner_id`, must belong to the run's customer or one of its children."""
     family = payer_family(db, customer_id)
     if owner_id in family:
@@ -101,21 +101,21 @@ def check_scope(db: ArDb, customer_id: str, owner_id: str, what: str) -> Decisio
     return deny('P11', f"{what} belongs to {owner_id}, outside this run's account ({', '.join(family)}); leave it alone.")
 
 
-def check_invoice_scope(db: ArDb, customer_id: str, *, invoice_id: str) -> Decision:
+def check_invoice_scope(db: CollectionsDb, customer_id: str, *, invoice_id: str) -> Decision:
     """P11 for one invoice; the whole check on opening a dispute on it or logging a promise against it."""
     return check_scope(db, customer_id, db.invoice(invoice_id).customer_id, f'Invoice {invoice_id}')
 
 
 # Messages: P11, P2, P1, P14, P12, P4, P3, P5.
 
-def check_send_message(db: ArDb, customer_id: str, *, contact_id: str, channel: Channel, invoice_ids: Sequence[str],
+def check_send_message(db: CollectionsDb, customer_id: str, *, contact_id: str, channel: Channel, invoice_ids: Sequence[str],
                        body: str, approved: bool = False) -> Decision:
     """`approved` is True when carrying out a draft a person approved, which satisfies P5's review."""
     contact = db.contact(contact_id)
     return first_failure(_message_rules(db, customer_id, contact, channel, invoice_ids, body, approved))
 
 
-def _message_rules(db: ArDb, customer_id: str, contact: Contact, channel: Channel, invoice_ids: Sequence[str],
+def _message_rules(db: CollectionsDb, customer_id: str, contact: Contact, channel: Channel, invoice_ids: Sequence[str],
                    body: str, approved: bool) -> Iterator[Decision]:
     yield check_scope(db, customer_id, contact.customer_id, f'Contact {contact.contact_id}')
     yield from (check_invoice_scope(db, customer_id, invoice_id=invoice_id) for invoice_id in invoice_ids)
@@ -135,7 +135,7 @@ def _p2_do_not_contact(contact: Contact) -> Decision:
                       'If no contact on the account may be reached, escalate to a person.')
 
 
-def _p1_not_paused(db: ArDb, invoice_ids: Sequence[str]) -> Decision:
+def _p1_not_paused(db: CollectionsDb, invoice_ids: Sequence[str]) -> Decision:
     paused = [i for i in invoice_ids if db.invoice(i).collections_paused]
     if not paused:
         return ALLOW
@@ -143,7 +143,7 @@ def _p1_not_paused(db: ArDb, invoice_ids: Sequence[str]) -> Decision:
                       'of any reminder.')
 
 
-def _not_chaseable(db: ArDb, invoice_id: str) -> str | None:
+def _not_chaseable(db: CollectionsDb, invoice_id: str) -> str | None:
     invoice = db.invoice(invoice_id)
     if invoice.status is not InvoiceStatus.OPEN:
         return f'{invoice_id} is {invoice.status}'
@@ -152,7 +152,7 @@ def _not_chaseable(db: ArDb, invoice_id: str) -> str | None:
     return None
 
 
-def _p14_open_and_overdue(db: ArDb, invoice_ids: Sequence[str]) -> Decision:
+def _p14_open_and_overdue(db: CollectionsDb, invoice_ids: Sequence[str]) -> Decision:
     blocked = [why for i in invoice_ids if (why := _not_chaseable(db, i)) is not None]
     if not blocked:
         return ALLOW
@@ -160,7 +160,7 @@ def _p14_open_and_overdue(db: ArDb, invoice_ids: Sequence[str]) -> Decision:
                        f'{"; ".join(blocked)}. Leave them out of any reminder.')
 
 
-def _p12_no_promise_pending(db: ArDb, invoice_ids: Sequence[str]) -> Decision:
+def _p12_no_promise_pending(db: CollectionsDb, invoice_ids: Sequence[str]) -> Decision:
     """A promise holds off reminders only while the open, not-yet-due promises cover the invoice's balance."""
     for invoice_id in invoice_ids:
         pending = [p for p in db.promises.values() if p.invoice_id == invoice_id
@@ -173,7 +173,7 @@ def _p12_no_promise_pending(db: ArDb, invoice_ids: Sequence[str]) -> Decision:
     return ALLOW
 
 
-def _p4_spacing(db: ArDb, customer_id: str) -> Decision:
+def _p4_spacing(db: CollectionsDb, customer_id: str) -> Decision:
     last, minimum = last_outbound_date(db, customer_id), db.tenant.min_days_between_reminders
     if last is None or (db.today - last).days >= minimum:
         return ALLOW
@@ -181,7 +181,7 @@ def _p4_spacing(db: ArDb, customer_id: str) -> Decision:
                       f'reminders need {minimum} days between them, so send nothing before {last + timedelta(minimum)}.')
 
 
-def _p3_amount_stated(db: ArDb, invoice_ids: Sequence[str], body: str) -> Decision:
+def _p3_amount_stated(db: CollectionsDb, invoice_ids: Sequence[str], body: str) -> Decision:
     # Checks only that the amount due appears; other figures may too, and unsupported claims are the tone judge's job.
     due = amount_due(db, invoice_ids)
     if due in amounts_in(body):
@@ -190,7 +190,7 @@ def _p3_amount_stated(db: ArDb, invoice_ids: Sequence[str], body: str) -> Decisi
                       f'{due:,.2f}; no number in the body equals it.')
 
 
-def _p5_autonomy(db: ArDb, contact: Contact, channel: Channel, approved: bool) -> Decision:
+def _p5_autonomy(db: CollectionsDb, contact: Contact, channel: Channel, approved: bool) -> Decision:
     customer = db.customer(contact.customer_id)
     level = customer.autonomy.get(channel, AutonomyLevel.OFF)
     if level is AutonomyLevel.OFF:
@@ -202,11 +202,11 @@ def _p5_autonomy(db: ArDb, contact: Contact, channel: Channel, approved: bool) -
 
 # Cash application: P11, P7, P6, P15, P8.
 
-def check_apply_payment(db: ArDb, customer_id: str, *, payment_id: str, invoice_id: str, amount: Decimal) -> Decision:
+def check_apply_payment(db: CollectionsDb, customer_id: str, *, payment_id: str, invoice_id: str, amount: Decimal) -> Decision:
     return first_failure(_payment_rules(db, customer_id, payment_id, invoice_id, amount))
 
 
-def _payment_rules(db: ArDb, customer_id: str, payment_id: str, invoice_id: str, amount: Decimal) -> Iterator[Decision]:
+def _payment_rules(db: CollectionsDb, customer_id: str, payment_id: str, invoice_id: str, amount: Decimal) -> Iterator[Decision]:
     payment, invoice = db.payment(payment_id), db.invoice(invoice_id)
     yield check_scope(db, customer_id, payment.customer_id, f'Payment {payment_id}')
     if invoice.customer_id not in payer_family(db, payment.customer_id):
@@ -218,7 +218,7 @@ def _payment_rules(db: ArDb, customer_id: str, payment_id: str, invoice_id: str,
     yield _p8_one_candidate(db, payment_id)
 
 
-def _p6_fits(db: ArDb, payment_id: str, invoice_id: str, amount: Decimal) -> Decision:
+def _p6_fits(db: CollectionsDb, payment_id: str, invoice_id: str, amount: Decimal) -> Decision:
     left, owed = unapplied(db, payment_id), balance(db, invoice_id)
     if amount <= 0:
         return deny('P6', f'An application must be a positive amount; got {amount}.')
@@ -229,7 +229,7 @@ def _p6_fits(db: ArDb, payment_id: str, invoice_id: str, amount: Decimal) -> Dec
     return ALLOW
 
 
-def _p15_follows_remittance(db: ArDb, payment_id: str, invoice_id: str, amount: Decimal) -> Decision:
+def _p15_follows_remittance(db: CollectionsDb, payment_id: str, invoice_id: str, amount: Decimal) -> Decision:
     """P15: cash goes where its remittance says, up to the amount it gives; with none, `_p15_no_remittance` decides."""
     remittance = remittance_for(db, payment_id)
     if remittance is None:
@@ -248,7 +248,7 @@ def _p15_follows_remittance(db: ArDb, payment_id: str, invoice_id: str, amount: 
                        f'{payment_id} is already applied to it; apply no more than {given - already}.')
 
 
-def _p15_no_remittance(db: ArDb, payment_id: str, invoice_id: str) -> Decision:
+def _p15_no_remittance(db: CollectionsDb, payment_id: str, invoice_id: str) -> Decision:
     """One matching invoice: only that one. Several: P8 holds them for a person. None: unidentified cash, held too."""
     candidates, left = payment_candidates(db, payment_id), unapplied(db, payment_id)
     if not candidates:
@@ -260,7 +260,7 @@ def _p15_no_remittance(db: ArDb, payment_id: str, invoice_id: str) -> Decision:
     return ALLOW
 
 
-def _p8_one_candidate(db: ArDb, payment_id: str) -> Decision:
+def _p8_one_candidate(db: CollectionsDb, payment_id: str) -> Decision:
     candidates = payment_candidates(db, payment_id)
     if len(candidates) <= 1:
         return ALLOW
@@ -271,19 +271,19 @@ def _p8_one_candidate(db: ArDb, payment_id: str) -> Decision:
 # Disputes and credits: P11, P9, P10.
 
 
-def has_open_dispute(db: ArDb, invoice_id: str) -> bool:
+def has_open_dispute(db: CollectionsDb, invoice_id: str) -> bool:
     return any(d.invoice_id == invoice_id and d.status is DisputeStatus.OPEN for d in db.disputes.values())
 
 
-def _dispute_scope(db: ArDb, customer_id: str, dispute: Dispute) -> Decision:
+def _dispute_scope(db: CollectionsDb, customer_id: str, dispute: Dispute) -> Decision:
     return check_scope(db, customer_id, db.invoice(dispute.invoice_id).customer_id, f'Dispute {dispute.dispute_id}')
 
 
-def check_reject_dispute(db: ArDb, customer_id: str, *, dispute_id: str) -> Decision:
+def check_reject_dispute(db: CollectionsDb, customer_id: str, *, dispute_id: str) -> Decision:
     return _dispute_scope(db, customer_id, db.dispute(dispute_id))
 
 
-def check_propose_credit(db: ArDb, customer_id: str, *, dispute_id: str, amount: Decimal) -> Decision:
+def check_propose_credit(db: CollectionsDb, customer_id: str, *, dispute_id: str, amount: Decimal) -> Decision:
     dispute = db.dispute(dispute_id)
     return first_failure((
         _dispute_scope(db, customer_id, dispute),
@@ -293,7 +293,7 @@ def check_propose_credit(db: ArDb, customer_id: str, *, dispute_id: str, amount:
     ))
 
 
-def _p9_never_rejected(db: ArDb, dispute: Dispute) -> Decision:
+def _p9_never_rejected(db: CollectionsDb, dispute: Dispute) -> Decision:
     rejected = sorted(c.credit_id for c in db.credits.values()
                       if c.dispute_id == dispute.dispute_id and c.status is CreditStatus.REJECTED)
     if not rejected:
@@ -303,7 +303,7 @@ def _p9_never_rejected(db: ArDb, dispute: Dispute) -> Decision:
                       'matter, reject the dispute with the note as the reason.')
 
 
-def _p9_fits_dispute(db: ArDb, dispute: Dispute, amount: Decimal) -> Decision:
+def _p9_fits_dispute(db: CollectionsDb, dispute: Dispute, amount: Decimal) -> Decision:
     if dispute.status is not DisputeStatus.OPEN:
         return deny('P9', f'{dispute.dispute_id} is {dispute.status}, not open; a credit needs an open dispute.')
     if amount <= 0:
@@ -317,7 +317,7 @@ def _p9_fits_dispute(db: ArDb, dispute: Dispute, amount: Decimal) -> Decision:
     return ALLOW
 
 
-def _p10_limit(db: ArDb, invoice_id: str, amount: Decimal) -> Decision:
+def _p10_limit(db: CollectionsDb, invoice_id: str, amount: Decimal) -> Decision:
     """The limit is on the invoice's credits together, so a large credit cannot be split into small ones."""
     limit, already = db.tenant.credit_auto_approve_limit, applied_credits(db, invoice_id)
     if already + amount <= limit:
@@ -328,12 +328,12 @@ def _p10_limit(db: ArDb, invoice_id: str, amount: Decimal) -> Decision:
 
 # Approvals: P11, P13, then the rules of the action being carried out.
 
-def check_execute_approval(db: ArDb, customer_id: str, *, approval_id: str) -> Decision:
+def check_execute_approval(db: CollectionsDb, customer_id: str, *, approval_id: str) -> Decision:
     approval = db.approval(approval_id)
     return first_failure(_execute_rules(db, customer_id, approval))
 
 
-def _execute_rules(db: ArDb, customer_id: str, approval: Approval) -> Iterator[Decision]:
+def _execute_rules(db: CollectionsDb, customer_id: str, approval: Approval) -> Iterator[Decision]:
     yield check_scope(db, customer_id, approval.customer_id, f'Approval {approval.approval_id}')
     yield _p13_approved_once(approval)
     yield _ready_to_carry_out(db, customer_id, approval)
@@ -351,7 +351,7 @@ def _p13_approved_once(approval: Approval) -> Decision:
     return ALLOW
 
 
-def _ready_to_carry_out(db: ArDb, customer_id: str, approval: Approval) -> Decision:
+def _ready_to_carry_out(db: CollectionsDb, customer_id: str, approval: Approval) -> Decision:
     match approval.action:
         case 'propose_credit':
             credit = db.credit(CreditApproval.model_validate(approval.payload).credit_id)

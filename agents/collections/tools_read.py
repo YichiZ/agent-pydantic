@@ -12,7 +12,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from agents.collections import ledger
-from agents.collections.data_model import ArDb, DisputeStatus, Invoice, Payment, PromiseStatus, Row
+from agents.collections.data_model import CollectionsDb, DisputeStatus, Invoice, Payment, PromiseStatus, Row
 from agents.collections.policy import check_invoice_scope, check_scope, remittance_for
 from agents.collections.store import Store
 from agents.collections.tool_support import parse_ids, parse_text, require
@@ -120,18 +120,18 @@ def _documents(directory: Path) -> list[dict[str, str]]:
     return [_Document.model_validate_json(path.read_text()).model_dump() for path in sorted(directory.glob('*.json'))]
 
 
-def _scoped_payment(db: ArDb, customer_id: str, payment_id: str) -> Payment:
+def _scoped_payment(db: CollectionsDb, customer_id: str, payment_id: str) -> Payment:
     payment = db.payment(parse_text(payment_id, 'payment_id'))
     require(check_scope(db, customer_id, payment.customer_id, f'Payment {payment.payment_id}'))
     return payment
 
 
-def _invoice(db: ArDb, invoice: Invoice) -> Json:
+def _invoice(db: CollectionsDb, invoice: Invoice) -> Json:
     return {**invoice.model_dump(mode='json'), 'balance': _money(ledger.balance(db, invoice.invoice_id)),
             'overdue': ledger.is_overdue(db, invoice.invoice_id)}
 
 
-def _payment(db: ArDb, payment: Payment) -> Json:
+def _payment(db: CollectionsDb, payment: Payment) -> Json:
     return {**payment.model_dump(mode='json'), 'unapplied': _money(ledger.unapplied(db, payment.payment_id)),
             'has_remittance': remittance_for(db, payment.payment_id) is not None}
 

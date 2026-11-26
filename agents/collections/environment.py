@@ -15,7 +15,7 @@ from types import MappingProxyType
 from typing import Any, Literal
 
 from agents.collections import assertions, tools_disputes, tools_read, tools_write
-from agents.collections.data_model import ArDb
+from agents.collections.data_model import CollectionsDb
 from agents.collections.errors import InvalidArgumentError, UnknownToolError
 from agents.collections.store import Store
 
@@ -69,7 +69,7 @@ def call_env_function(store: Store, name: str, arguments: Mapping[str, Any] | No
     return _invoke(_lookup(ENV_FUNCTIONS, name, 'environment function'), name, (store,), arguments)
 
 
-def check_assertion(db: ArDb, func_name: str, arguments: Mapping[str, Any] | None = None) -> bool:
+def check_assertion(db: CollectionsDb, func_name: str, arguments: Mapping[str, Any] | None = None) -> bool:
     return _invoke(_lookup(ASSERTIONS, func_name, 'assertion'), func_name, (db,), arguments)
 
 
@@ -77,7 +77,7 @@ def fresh_store(db_path: str | Path, documents_dir: str | Path) -> Store:
     directory = Path(documents_dir)
     if not directory.is_dir():
         raise NotADirectoryError(f'Documents directory {directory} does not exist.')
-    return Store(db=ArDb.load(db_path), documents_dir=directory)
+    return Store(db=CollectionsDb.load(db_path), documents_dir=directory)
 
 
 def _lookup[T](registry: Mapping[str, T], name: str, kind: str) -> T:

@@ -1,4 +1,4 @@
-"""The collections grid (plan section 2.6), compared with a saved baseline: pass^1 and pass^k overall and by label,
+"""The eval grid (plan section 2.6), compared with a saved baseline: pass^1 and pass^k overall and by label,
 never-events, human in the loop, retrieval, tone and efficiency, computed by pure functions from `TrialResult`s.
 """
 

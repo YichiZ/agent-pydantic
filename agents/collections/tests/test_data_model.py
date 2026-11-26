@@ -1,4 +1,4 @@
-"""The collections data model loads agents/collections/db/db.json, round-trips it, and refuses bad rows."""
+"""The data model loads agents/collections/db/db.json, round-trips it, and refuses bad rows."""
 import json
 from datetime import date
 from decimal import Decimal
@@ -8,7 +8,7 @@ import pytest
 from pydantic import ValidationError
 
 from agents.collections.data_model import (
-    ArDb,
+    CollectionsDb,
     AutonomyLevel,
     Channel,
     CreditStatus,
@@ -87,8 +87,8 @@ def test_next_id_continues_each_tables_numbering(db):
 
 
 def test_next_id_starts_an_empty_table_at_its_first_number(db):
-    tables = {name: db.table(name) for name in ArDb.model_fields}
-    empty = ArDb.model_validate({**tables, 'approvals': {}, 'credits': {}})
+    tables = {name: db.table(name) for name in CollectionsDb.model_fields}
+    empty = CollectionsDb.model_validate({**tables, 'approvals': {}, 'credits': {}})
     assert (next_id(empty, 'approvals'), next_id(empty, 'credits')) == ('apr_8000', 'crd_4001')
 
 
@@ -179,32 +179,32 @@ def _write(tmp_path: Path, content: dict) -> Path:
 
 def test_load_missing_file(tmp_path):
     with pytest.raises(FileNotFoundError):
-        ArDb.load(tmp_path / 'missing.json')
+        CollectionsDb.load(tmp_path / 'missing.json')
 
 
 def test_load_rejects_unwrapped_table(tmp_path, raw):
     broken = {**raw, 'invoices': raw['invoices']['data']}
     with pytest.raises(ValueError, match="'invoices'"):
-        ArDb.load(_write(tmp_path, broken))
+        CollectionsDb.load(_write(tmp_path, broken))
 
 
 def test_load_rejects_non_object_file(tmp_path):
     path = tmp_path / 'db.json'
     path.write_text('[]')
     with pytest.raises(ValueError, match='object'):
-        ArDb.load(path)
+        CollectionsDb.load(path)
 
 
 def test_load_rejects_missing_or_extra_tables(tmp_path, raw):
     without = {name: table for name, table in raw.items() if name != 'credits'}
     with pytest.raises(ValidationError, match='credits'):
-        ArDb.load(_write(tmp_path, without))
+        CollectionsDb.load(_write(tmp_path, without))
     with pytest.raises(ValidationError, match='refunds'):
-        ArDb.load(_write(tmp_path, {**raw, 'refunds': {'data': {}, 'notes': ''}}))
+        CollectionsDb.load(_write(tmp_path, {**raw, 'refunds': {'data': {}, 'notes': ''}}))
 
 
 def test_load_rejects_second_tenant(tmp_path, raw):
     tenant = raw['tenants']['data']['tn_harborline']
     tenants = {'data': {'tn_harborline': tenant, 'tn_other': {**tenant, 'tenant_id': 'tn_other'}}}
     with pytest.raises(ValidationError, match='one tenant'):
-        ArDb.load(_write(tmp_path, {**raw, 'tenants': tenants}))
+        CollectionsDb.load(_write(tmp_path, {**raw, 'tenants': tenants}))

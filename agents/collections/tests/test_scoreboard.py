@@ -16,7 +16,7 @@ from agents.collections.evals.scoreboard import (
 from agents.collections.evals.tasks import load_tasks
 
 
-# The collections grid (plan section 2.6), on hand-built trial results.
+# The eval grid (plan section 2.6), on hand-built trial results.
 
 
 def result(task_id, passed, *, flow='collections', disposition='act', needs_human=False, uses_documents=False,

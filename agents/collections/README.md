@@ -11,7 +11,7 @@ The eval set is built first and is the specification for the agent that follows.
 The agent, the eval runner and a saved baseline exist.
 
 - Built: [design](docs/collections-agent-design.md), [implementation plan](docs/collections-agent-implementation.md),
-  synthetic collections database, eval set of 21 tasks, data model and ledger, 15 policy rules, 15 tools,
+  synthetic accounts receivable database, eval set of 21 tasks, data model and ledger, 15 policy rules, 15 tools,
   the agent (one Pydantic AI orchestrator on Opus 5.5 with three capabilities loaded on demand), and the
   eval runner.
 - Baseline (`evals/baseline.json`): all 20 tasks of the set at the time pass on each of 4 trials, 80 runs
@@ -32,22 +32,22 @@ A `.env` with `ANTHROPIC_API_KEY` is needed only for live runs. The tests do not
 From the repo root:
 
 ```bash
-uv run pytest             # offline tests, no API key
+uv run pytest                                           # offline tests, no API key
 uv run pytest --cov=agents.collections
 ```
 
 These call a real model and need `ANTHROPIC_API_KEY` in `.env`:
 
 ```bash
-uv run python -m agents collections eval                        # all 21 tasks, one trial; prints the grid
-uv run python -m agents collections eval --trials 4             # pass^4
+uv run python -m agents collections eval                # all 21 tasks, one trial; prints the grid
+uv run python -m agents collections eval --trials 4     # pass^4
 uv run python -m agents collections eval --split never_events
 uv run python -m agents collections eval --task task_04 task_10
-uv run python -m agents collections eval --retrieval golden     # none | golden | search
-uv run python -m agents collections eval --judge                # also score tone, on Sonnet
+uv run python -m agents collections eval --retrieval golden # none | golden | search
+uv run python -m agents collections eval --judge        # also score tone, on Sonnet
 uv run python -m agents collections eval --task task_11 --trace # also each trial's whole conversation
-uv run python -m agents collections eval --thinking             # the model reasons before it answers
-uv run pytest -m e2e                                   # two live agent tests
+uv run python -m agents collections eval --thinking     # the model reasons before it answers
+uv run pytest -m e2e                                    # two live agent tests
 ```
 
 `--trace` prints, under each task, every trial as a conversation, in the order it happened, one labelled block
@@ -66,8 +66,8 @@ One task costs about $0.09 on Opus 5.5.
 To watch the agent on the 20 events in [`db/events/`](db/events/) (also live):
 
 ```bash
-uv run python -m agents collections run event_06                # one event: its context, then the same trace as --trace
-uv run python -m agents collections run --all                   # every event; --list shows them, --interactive lets you be the customer
+uv run python -m agents collections run event_06        # one event: its context, then the same trace as --trace
+uv run python -m agents collections run --all           # every event; --list shows them, --interactive lets you be the customer
 ```
 
 Events are not scored: there is no reference answer, so the command prints what the agent did and no PASS or FAIL. It takes the same

@@ -1,4 +1,4 @@
-"""The collections eval set as typed, frozen models: tasks from `agents/collections/db/tasks.json` and splits from
+"""The eval set as typed, frozen models: tasks from `agents/collections/db/tasks.json` and splits from
 `agents/collections/db/split_tasks.json`.
 
 A malformed file raises `TaskFileError` naming the file and what is wrong, before anything runs.

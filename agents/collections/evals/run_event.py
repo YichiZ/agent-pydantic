@@ -29,7 +29,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 
 from agents.collections.agent import run_turn  # the model is resolved on the first run, so importing needs no API key
-from agents.collections.data_model import ArDb
+from agents.collections.data_model import CollectionsDb
 from agents.collections.errors import TOOL_ERRORS
 from agents.collections.evals.clerk import haiku_clerk
 from agents.collections.evals.runner import STOP, ClerkFn, Customer, Transcript, run_agent, setup_store
@@ -98,7 +98,7 @@ class Job:
 def main(argv: Sequence[str] | None = None, *, agent_fn: AgentFn = run_turn, clerk: ClerkFn = haiku_clerk,
          read: Read = input) -> int:
     load_dotenv()  # ANTHROPIC_API_KEY from .env, found by walking up from this file; real env vars win
-    db = ArDb.load(DB_PATH)
+    db = CollectionsDb.load(DB_PATH)
     try:
         events = load_events(EVENTS_DIR, db.customers)
         args = parse_args(argv, events, db.customers)
@@ -169,7 +169,7 @@ def _problem(args: argparse.Namespace, events: Mapping[str, Event], customers: C
     return next((message for failed, message in checks if failed), None)
 
 
-def plan(args: argparse.Namespace, events: Mapping[str, Event], db: ArDb, clerk: ClerkFn, read: Read) -> list[Job]:
+def plan(args: argparse.Namespace, events: Mapping[str, Event], db: CollectionsDb, clerk: ClerkFn, read: Read) -> list[Job]:
     """A job per event asked for, each on its own store with its setup replayed, before any agent runs."""
     if args.customer is not None:
         return [Job(AD_HOC, (f'{AD_HOC}  {account(db, args.customer)}',), setup_store(args.customer, ()), args.customer,
@@ -180,7 +180,7 @@ def plan(args: argparse.Namespace, events: Mapping[str, Event], db: ArDb, clerk:
             for event in chosen]
 
 
-def event_job(event: Event, db: ArDb, customer: Customer | None) -> Job:
+def event_job(event: Event, db: CollectionsDb, customer: Customer | None) -> Job:
     """The event on a fresh store with its setup replayed; the intro is its header, notes and setup steps."""
     try:
         store = setup_store(event.customer_id, event.setup)
@@ -247,13 +247,13 @@ def _inline(value: Any) -> str:
     return text if len(text) <= VALUE_WIDTH else f'{text[:VALUE_WIDTH - 3]}...'
 
 
-def list_lines(events: Iterable[Event], db: ArDb) -> list[str]:
+def list_lines(events: Iterable[Event], db: CollectionsDb) -> list[str]:
     rows = [(e.id, e.type, account(db, e.customer_id), f'rules {verdict(e)}') for e in events]
     width = max((len(row[2]) for row in rows), default=0)
     return [f'{event_id}  {kind:<16}  {name:<{width}}  {rules}' for event_id, kind, name, rules in rows]
 
 
-def account(db: ArDb, customer_id: str) -> str:
+def account(db: CollectionsDb, customer_id: str) -> str:
     return f'{db.customer(customer_id).name} ({customer_id})'
 
 

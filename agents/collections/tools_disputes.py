@@ -6,7 +6,7 @@ logs once; a denied write raises `PolicyDenied` and leaves the store as it was.
 
 from decimal import Decimal
 
-from agents.collections.data_model import ArDb, Credit, CreditApproval, CreditStatus, Dispute, DisputeCategory, DisputeStatus, next_id
+from agents.collections.data_model import CollectionsDb, Credit, CreditApproval, CreditStatus, Dispute, DisputeCategory, DisputeStatus, next_id
 from agents.collections.errors import InvalidArgumentError
 from agents.collections.ledger import balance
 from agents.collections.policy import (
@@ -79,7 +79,7 @@ def propose_credit(store: Store, customer_id: str, dispute_id: str, amount: str 
                   'and collections resume unless another dispute is open.')
 
 
-def apply_credit(db: ArDb, credit: Credit) -> ArDb:
+def apply_credit(db: CollectionsDb, credit: Credit) -> CollectionsDb:
     """Apply a credit: the credit is applied, its dispute resolved valid, the invoice unpaused or paid as due."""
     applied = credit.model_copy(update={'status': CreditStatus.APPLIED, 'applied_at': db.today})
     dispute = db.dispute(credit.dispute_id)

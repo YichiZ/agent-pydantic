@@ -10,7 +10,7 @@ from typing import Literal, Protocol
 from pydantic_ai.models import Model
 from pydantic_evals.evaluators.llm_as_a_judge import judge_input_output
 
-from agents.collections.data_model import ApprovalStatus, ArDb, MessageDirection
+from agents.collections.data_model import ApprovalStatus, CollectionsDb, MessageDirection
 from agents.collections.ledger import balance, open_invoices, payer_family
 
 JUDGE_MODEL = 'anthropic:claude-sonnet-5-5'
@@ -32,8 +32,8 @@ async def sonnet_judge(text: str, facts: str, model: Model | str = JUDGE_MODEL) 
     return min(1.0, max(0.0, grading.score))
 
 
-async def score_tone(judge: JudgeFn, task_id: str, customer_id: str, start: ArDb,
-                     actual: ArDb) -> tuple[float | None, str | None]:
+async def score_tone(judge: JudgeFn, task_id: str, customer_id: str, start: CollectionsDb,
+                     actual: CollectionsDb) -> tuple[float | None, str | None]:
     """(score, error). Both None when the task is not judged or the agent wrote nothing new to judge."""
     text = judged_text(task_id, customer_id, start, actual)
     if text is None:
@@ -44,7 +44,7 @@ async def score_tone(judge: JudgeFn, task_id: str, customer_id: str, start: ArDb
         return None, f'{type(error).__name__}: {error}'
 
 
-def judged_text(task_id: str, customer_id: str, start: ArDb, actual: ArDb) -> str | None:
+def judged_text(task_id: str, customer_id: str, start: CollectionsDb, actual: CollectionsDb) -> str | None:
     """The newest outreach the agent wrote in this run, of the kind the task is judged on."""
     kind = JUDGED.get(task_id)
     if kind is None:
@@ -61,7 +61,7 @@ def judged_text(task_id: str, customer_id: str, start: ArDb, actual: ArDb) -> st
     return texts[-1] if texts else None
 
 
-def ledger_facts(db: ArDb, customer_id: str) -> str:
+def ledger_facts(db: CollectionsDb, customer_id: str) -> str:
     """Everything a correct reminder may truthfully mention: who to address, and each open invoice's history."""
     family = set(payer_family(db, customer_id))
     customer = db.customer(customer_id)
@@ -76,7 +76,7 @@ def ledger_facts(db: ArDb, customer_id: str) -> str:
     return '\n'.join(lines)
 
 
-def _invoice_history(db: ArDb, invoice_id: str) -> list[str]:
+def _invoice_history(db: CollectionsDb, invoice_id: str) -> list[str]:
     disputes = [f'  - dispute {d.dispute_id}: {d.category.value}, {d.amount:.2f}, {d.status.value}. Claim: {d.claim}'
                 for d in db.disputes.values() if d.invoice_id == invoice_id]
     credits = [f'  - credit {c.credit_id}: {c.amount:.2f}, {c.status.value}, for {c.reason}'
