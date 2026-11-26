@@ -1,6 +1,7 @@
 """Run one of the agents in this repo: `python -m agents <agent> [args...]`.
 
-An agent is a package `agents/<name>/` with a `cli.py` whose `main(argv) -> int` gets the rest of the arguments.
+An agent is a package `agents/<name>/` with a `cli.py`, or failing that an `agent.py`, whose `main(argv) -> int`
+gets the rest of the arguments.
 """
 
 import importlib
@@ -14,10 +15,15 @@ import agents
 USAGE = 'usage: python -m agents <agent> [args...]'
 
 
+def entry(name: str) -> str | None:
+    """The module holding the agent's `main`: its `cli`, else its `agent`. Finding it imports only the package."""
+    return next((module for module in (f'agents.{name}.cli', f'agents.{name}.agent')
+                 if importlib.util.find_spec(module) is not None), None)
+
+
 def available() -> list[str]:
-    """The packages under agents/ that have a `cli` module. Finding it imports only the package, not its cli."""
-    return sorted(info.name for info in pkgutil.iter_modules(agents.__path__)
-                  if info.ispkg and importlib.util.find_spec(f'agents.{info.name}.cli') is not None)
+    """The packages under agents/ that have an entry module."""
+    return sorted(info.name for info in pkgutil.iter_modules(agents.__path__) if info.ispkg and entry(info.name))
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -29,7 +35,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args[0] not in names:
         print(f'error: unknown agent {args[0]!r}; available: {", ".join(names)}', file=sys.stderr)
         return 2
-    return importlib.import_module(f'agents.{args[0]}.cli').main(args[1:])
+    return importlib.import_module(entry(args[0])).main(args[1:])
 
 
 if __name__ == '__main__':
