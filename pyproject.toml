@@ -5,6 +5,8 @@ description = "Independent AI agents built with Pydantic AI, one package each un
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "cryptography>=50.0.2",
+    "genai-prices>=0.2.5",
     "pydantic-ai>=2.71.0",
     "pydantic-ai-harness[playwright]>=0.75.0",
     "python-dotenv>=1.2.4",
