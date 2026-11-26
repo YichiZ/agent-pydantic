@@ -19,7 +19,7 @@ from pydantic_ai.messages import ModelMessage, TextPart, ToolCallPart, ToolRetur
 from pydantic_evals import Case, Dataset
 from pydantic_evals.evaluators import EvaluationReason, Evaluator, EvaluatorContext
 
-from agents.browser.agent import agent
+from agents.browser.agent import agent, trace_to_logfire
 
 TASK_ID = 'bu2-052'
 BENCHMARK = Path(__file__).parent / '.benchmark'  # the user's clone; gitignored
@@ -97,7 +97,8 @@ class BUBenchJudge(Evaluator):
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    load_dotenv()  # ANTHROPIC_API_KEY and OPENAI_API_KEY from .env; real env vars win
+    load_dotenv()  # ANTHROPIC_API_KEY, OPENAI_API_KEY and LOGFIRE_TOKEN from .env; real env vars win
+    trace_to_logfire()
     args = sys.argv[1:] if argv is None else argv
     trials = int(args[0]) if args else 1
     if not BENCHMARK.exists():

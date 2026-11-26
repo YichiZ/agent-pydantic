@@ -2,6 +2,7 @@
 
 from collections.abc import Sequence
 
+import logfire
 from dotenv import load_dotenv
 from pydantic_ai import Agent
 from pydantic_ai_harness.playwright import PlaywrightBrowser
@@ -14,7 +15,16 @@ agent = Agent(
 )
 
 
+def trace_to_logfire() -> None:
+    """Send every run (model requests, tool calls and results, browser spans) to Logfire when credentials are present:
+    LOGFIRE_TOKEN, or .logfire/ from `logfire-cli init`. Without either this sends and prints nothing.
+    Call it after load_dotenv()."""
+    logfire.configure(send_to_logfire='if-token-present', service_name='browser', console=False)
+    logfire.instrument_pydantic_ai()
+
+
 def main(argv: Sequence[str] | None = None) -> int:
-    load_dotenv()  # ANTHROPIC_API_KEY from .env; real env vars win
+    load_dotenv()  # ANTHROPIC_API_KEY and LOGFIRE_TOKEN from .env; real env vars win
+    trace_to_logfire()
     agent.to_cli_sync(prog_name='browser')
     return 0
