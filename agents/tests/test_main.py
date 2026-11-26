@@ -18,7 +18,9 @@ def no_dotenv(monkeypatch):
 def test_no_agent_or_help_lists_the_agents_without_importing_their_cli(argv, monkeypatch, capsys):
     monkeypatch.delitem(sys.modules, 'agents.ar.cli', raising=False)
     assert main(argv) == 0
-    assert '  ar' in capsys.readouterr().out.splitlines()
+    lines = capsys.readouterr().out.splitlines()
+    assert '  ar' in lines
+    assert '  browser' in lines  # no cli.py: found by its agent.py
     assert 'agents.ar.cli' not in sys.modules
 
 

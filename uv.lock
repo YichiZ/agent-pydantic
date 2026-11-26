@@ -13,13 +13,11 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "pydantic-ai" },
+    { name = "pydantic-ai-harness", extra = ["playwright"] },
     { name = "python-dotenv" },
 ]
 
 [package.dev-dependencies]
-browser = [
-    { name = "pydantic-ai-harness", extra = ["playwright"] },
-]
 dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -28,11 +26,11 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "pydantic-ai", specifier = ">=2.71.0" },
+    { name = "pydantic-ai-harness", extras = ["playwright"], specifier = ">=0.75.0" },
     { name = "python-dotenv", specifier = ">=1.2.4" },
 ]
 
 [package.metadata.requires-dev]
-browser = [{ name = "pydantic-ai-harness", extras = ["playwright"], specifier = ">=0.75.0" }]
 dev = [
     { name = "pytest", specifier = ">=9.2.0" },
     { name = "pytest-cov", specifier = ">=7.1.0" },

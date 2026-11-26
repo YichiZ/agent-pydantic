@@ -10,7 +10,7 @@ belong here.
 
 - [`ar`](agents/ar/README.md): an AI coworker for accounts receivable (collections reminders, cash
   application, disputes and deductions), with its eval set and baseline.
-- [`browser`](agents/browser/README.md): opens a web page in a real browser and returns typed data from it.
+- [`browser`](agents/browser/README.md): an interactive agent you chat with in the terminal; it browses the web in a real browser.
 
 ## Run
 
@@ -22,7 +22,7 @@ uv run python -m agents                      # list the agents
 uv run python -m agents ar -h                # an agent's commands
 uv run python -m agents ar run --list        # e.g. the AR agent's events
 uv run python -m agents ar eval --trials 4   # e.g. the AR eval set, pass^4
-uv run python -m agents browser demo         # e.g. the browser agent's demo extraction
+uv run python -m agents browser              # e.g. chat with the browser agent
 uv run pytest                                # every agent's offline tests
 ```
 
@@ -30,7 +30,8 @@ uv run pytest                                # every agent's offline tests
 
 1. Create `agents/<name>/` with an `__init__.py`; keep its data, evals, tests and docs inside it. Build
    the agent with Pydantic AI.
-2. Add `agents/<name>/cli.py` with `main(argv: Sequence[str] | None = None) -> int`. It gets the arguments
-   after `python -m agents <name>`, and `python -m agents` lists it from then on.
+2. Add `agents/<name>/cli.py` (or, for a one-file agent, `agent.py`) with
+   `main(argv: Sequence[str] | None = None) -> int`. It gets the arguments after `python -m agents <name>`,
+   and `python -m agents` lists it from then on.
 3. Put its tests in `agents/<name>/tests/` with an `__init__.py`, so their module names do not collide with
    another agent's; `uv run pytest` collects them.
