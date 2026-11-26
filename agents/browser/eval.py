@@ -4,6 +4,7 @@ import asyncio
 import base64
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -70,7 +71,9 @@ class BUBenchJudge(Evaluator):
             json.dump(ctx.output, file)
             file.flush()
             command = ['uv', 'run', '--project', str(BENCHMARK), 'python', '-c', JUDGE_SNIPPET, TASK_ID, file.name]
-            done = await asyncio.to_thread(subprocess.run, command, cwd=BENCHMARK, capture_output=True, text=True)
+            env = {**os.environ, 'ANONYMIZED_TELEMETRY': 'false'}  # browser-use reports usage unless told not to
+            done = await asyncio.to_thread(subprocess.run, command, cwd=BENCHMARK, env=env, capture_output=True,
+                                           text=True)
         if done.returncode:  # a judge error fails the trial; it is not scored as zero
             raise RuntimeError(f'The judge exited with {done.returncode}:\n{done.stderr[-2000:]}')
         return results(json.loads(done.stdout.splitlines()[-1]))  # the snippet prints its JSON last
