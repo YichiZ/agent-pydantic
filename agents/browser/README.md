@@ -25,4 +25,6 @@ git -C agents/browser/evals/.benchmark checkout 77b4df339fe8fc293fb48896cfa1c73d
 uv run --env-file .env python -m agents.browser.evals.run 3                          # three trials, one at a time
 ```
 
-Baseline: not run yet.
+Baseline (2026-11-26, 3 trials): mean score 0.72 (0.70, 0.86, 0.60). The parameters and the result per rubric item
+are in [evals/runs/README.md](evals/runs/README.md). Save a run's full report to `evals/.reports/` (gitignored): it
+paraphrases the benchmark's rubric, so only scores and per-item results are committed.

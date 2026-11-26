@@ -1,6 +1,7 @@
 # Browser agent eval: BU Bench V2.1 task 52
 
-Status: plan, not built.
+Status: built. Since the plan: the eval lives in `agents/browser/evals/`, and results are recorded in
+`agents/browser/evals/runs/README.md`, not as one line in the browser README.
 
 ## Goal
 

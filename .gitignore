@@ -23,3 +23,6 @@ wheels/
 
 # Browser agent eval: the user's clone of the BU Bench repo
 agents/browser/evals/.benchmark/
+
+# Browser agent eval: full judge reports (they paraphrase the rubric; local only)
+agents/browser/evals/.reports/
