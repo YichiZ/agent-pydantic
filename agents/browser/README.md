@@ -12,3 +12,17 @@ uv run python -m agents browser                            # chat; needs ANTHROP
 uv run pytest agents/browser                                # offline test, no API key, no browser
 uv run --env-file .env pytest -m e2e agents/browser         # live test against quotes.toscrape.com
 ```
+
+## Eval
+
+Task `bu2-052` of [BU Bench V2.1](https://github.com/browser-use/benchmark), scored by the benchmark's own judge:
+see `eval.py` and [docs/eval-plan.md](docs/eval-plan.md). A trial costs about $4 for the agent plus one OpenAI
+judge call, and needs `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` in `.env`.
+
+```bash
+git clone https://github.com/browser-use/benchmark agents/browser/.benchmark   # once; gitignored
+git -C agents/browser/.benchmark checkout 77b4df339fe8fc293fb48896cfa1c73dd743af42
+uv run --env-file .env python -m agents.browser.eval 3                          # three trials, one at a time
+```
+
+Baseline: not run yet.

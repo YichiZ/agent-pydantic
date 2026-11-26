@@ -20,3 +20,6 @@ wheels/
 
 # Test coverage data
 .coverage
+
+# Browser agent eval: the user's clone of the BU Bench repo
+agents/browser/.benchmark/

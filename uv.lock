@@ -12,6 +12,7 @@ name = "agent-pydantic"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "cryptography" },
     { name = "pydantic-ai" },
     { name = "pydantic-ai-harness", extra = ["playwright"] },
     { name = "python-dotenv" },
@@ -25,6 +26,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cryptography", specifier = ">=50.0.2" },
     { name = "pydantic-ai", specifier = ">=2.71.0" },
     { name = "pydantic-ai-harness", extras = ["playwright"], specifier = ">=0.75.0" },
     { name = "python-dotenv", specifier = ">=1.2.4" },
