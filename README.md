@@ -8,7 +8,7 @@ belong here.
 
 ## Agents
 
-- [`ar`](agents/ar/README.md): an accounts receivable agent (collections reminders, cash
+- [`collections`](agents/collections/README.md): a collections agent for accounts receivable (reminders, cash
   application, disputes and deductions), with its eval set and baseline.
 - [`browser`](agents/browser/README.md): an interactive agent you chat with in the terminal; it browses the web in a real browser.
 
@@ -18,12 +18,12 @@ Needs [uv](https://docs.astral.sh/uv/) and Python 3.13. Live runs need `ANTHROPI
 at the repo root (`cp .env.example .env`, then fill it in); the tests do not call a model.
 
 ```bash
-uv run python -m agents                      # list the agents
-uv run python -m agents ar -h                # an agent's commands
-uv run python -m agents ar run --list        # e.g. the AR agent's events
-uv run python -m agents ar eval --trials 4   # e.g. the AR eval set, pass^4
-uv run python -m agents browser              # e.g. chat with the browser agent
-uv run pytest                                # every agent's offline tests
+uv run python -m agents                              # list the agents
+uv run python -m agents collections -h               # an agent's commands
+uv run python -m agents collections run --list       # e.g. the collections agent's events
+uv run python -m agents collections eval --trials 4  # e.g. the collections agent's eval set, pass^4
+uv run python -m agents browser                      # e.g. chat with the browser agent
+uv run pytest                                        # every agent's offline tests
 ```
 
 ## Add an agent
