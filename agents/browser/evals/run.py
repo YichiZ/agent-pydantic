@@ -22,7 +22,7 @@ from pydantic_ai.messages import ModelMessage, TextPart, ToolCallPart, ToolRetur
 from pydantic_evals import Case, Dataset
 from pydantic_evals.evaluators import EvaluationReason, Evaluator, EvaluatorContext
 
-from agents.browser.agent import agent, config, configured, trace_to_logfire
+from agents.browser.agent import CONFIG, agent, configured, trace_to_logfire
 
 TASK_ID = 'bu2-052'
 BENCHMARK = Path(__file__).parent / '.benchmark'  # the user's clone; gitignored
@@ -100,10 +100,9 @@ class BUBenchJudge(Evaluator):
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    models = config()
     parser = argparse.ArgumentParser(prog='python -m agents.browser.evals.run')
     parser.add_argument('trials', nargs='?', type=int, default=1)
-    parser.add_argument('--model', choices=list(models['models']), default=models['default'],
+    parser.add_argument('--model', choices=list(CONFIG['models']), default=CONFIG['default'],
                         help='an entry of agents/browser/config.yaml (default: %(default)s)')
     args = parser.parse_args(argv)  # a mistyped key stops here, before anything is spent
     chosen = configured(args.model)
