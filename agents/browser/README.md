@@ -65,7 +65,7 @@ uv run --env-file .env python -m agents.browser.evals.run --tasks all --concurre
   not saved, so a repeated command runs it again. The run ends with a summary: failures by kind, mean score with
   and without failures counted as 0, total cost and wall time.
 
-The pilot of the full benchmark is in [evals/runs/full-benchmark.md](evals/runs/full-benchmark.md).
+The full 200-task run of `6.1-terra-codex` (mean score 0.38) is in [evals/runs/full-benchmark.md](evals/runs/full-benchmark.md).
 
 Baseline (2026-11-26, 3 trials): mean score 0.72 (0.70, 0.86, 0.60). The parameters and the result per rubric item
 are in [evals/runs/README.md](evals/runs/README.md). Save a run's full report to `evals/.reports/` (gitignored): it
