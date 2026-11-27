@@ -10,3 +10,7 @@ models:
     # openai:, not openai-chat:. Chat Completions rejects tools while reasoning is on for this model.
     model: openai:gpt-6.1-terra
     name: browser-agent-terra
+  6-luna-codex:
+    # Codex/ChatGPT subscription, not the API key: reads the Codex CLI login at ~/.codex/auth.json (read-only).
+    model: openai-codex:gpt-6-luna
+    name: browser-agent-luna-codex
