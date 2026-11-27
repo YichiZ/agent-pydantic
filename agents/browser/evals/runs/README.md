@@ -6,6 +6,9 @@ maintainers ask not to be published, so they stay in `../.reports/` (gitignored,
 
 A score is the weight of the rubric items the judge marked met, out of 100. An item is all or nothing.
 
+Each run is recorded on three measures per trial: accuracy (the score and the result per item), time (the agent's
+run time) and cost (agent and judge, in USD). A run that lacks one says so.
+
 ## 2026-11-26: baseline, 3 trials
 
 **Mean score 0.72** (0.70, 0.86, 0.60).
