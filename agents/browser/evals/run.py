@@ -17,7 +17,7 @@ from pathlib import Path
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
 from genai_prices import Usage, calc_price
-from pydantic_ai import Agent
+from pydantic_ai import Agent, UsageLimits
 from pydantic_ai.messages import ModelMessage, TextPart, ToolCallPart, ToolReturnPart
 from pydantic_evals import Case, Dataset
 from pydantic_evals.evaluators import EvaluationReason, Evaluator, EvaluatorContext
@@ -27,6 +27,7 @@ from agents.browser.agent import CONFIG, agent, configured, trace_to_logfire
 TASK_ID = 'bu2-052'
 BENCHMARK = Path(__file__).parent / '.benchmark'  # the user's clone; gitignored
 COMMIT = '77b4df339fe8fc293fb48896cfa1c73dd743af42'
+REQUEST_LIMIT = 200  # model requests per trial: a cost guard, the same for every model. Pydantic AI's default is 50.
 # Runs inside the clone's own environment, so the rubric never enters this process.
 JUDGE_SNIPPET = """
 import asyncio, json, sys
@@ -66,7 +67,7 @@ def trace(messages: Sequence[ModelMessage], answer: str) -> dict:
 
 
 async def run(prompt: str, agent: Agent = agent) -> dict:
-    result = await agent.run(prompt)
+    result = await agent.run(prompt, usage_limits=UsageLimits(request_limit=REQUEST_LIMIT))
     # The judge ignores keys it does not know, so the agent's cost rides along to the evaluator. A model with no
     # known price has no cost: report 0 rather than lose the run.
     return {**trace(result.all_messages(), result.output), 'agent_cost_usd': float(result.usage.cost or 0)}

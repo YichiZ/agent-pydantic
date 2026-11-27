@@ -1,5 +1,7 @@
 import asyncio
 
+import pytest
+from pydantic_ai.exceptions import UsageLimitExceeded
 from pydantic_ai.messages import (
     ModelRequest,
     ModelResponse,
@@ -60,3 +62,9 @@ def test_run_returns_the_trace_and_a_cost_offline():
         ran = asyncio.run(run('hello'))
     assert set(ran) == {'agent_steps', 'final_result', 'screenshots_b64', 'agent_cost_usd'}
     assert ran['agent_cost_usd'] == 0.0
+
+
+def test_run_stops_at_the_request_limit(monkeypatch):
+    monkeypatch.setattr('agents.browser.evals.run.REQUEST_LIMIT', 0)
+    with agent.override(model=TestModel(call_tools=[])), pytest.raises(UsageLimitExceeded, match='request_limit of 0'):
+        asyncio.run(run('hello'))
