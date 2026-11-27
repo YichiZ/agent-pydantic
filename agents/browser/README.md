@@ -6,7 +6,9 @@ An agent you chat with in the terminal that browses the web in a real browser. I
 
 The model and the agent's name come from [config.yaml](config.yaml): one entry per model, each with the full
 Pydantic AI model string and a name, and a `default`. Chat runs on the default (Sonnet 5.5); the eval can pick
-another entry with `--model`.
+another entry with `--model`. The `6.1-terra-codex` entry runs gpt-6.1-terra on a Codex/ChatGPT
+subscription (the Codex CLI login) instead of `OPENAI_API_KEY`; the cost it reports is then the API-equivalent
+price, not money spent.
 
 It can open any public page; private and loopback addresses are blocked. The browser closes after each
 turn, so the conversation carries between turns but logins and open pages do not.
@@ -42,6 +44,28 @@ git -C agents/browser/evals/.benchmark checkout 77b4df339fe8fc293fb48896cfa1c73d
 uv run --env-file .env python -m agents.browser.evals.run 3                          # three trials, one at a time
 uv run --env-file .env python -m agents.browser.evals.run --model 6.1-terra          # one trial on another config.yaml entry
 ```
+
+The same command runs other tasks of the benchmark, several at a time:
+
+```bash
+uv run --env-file .env python -m agents.browser.evals.run --tasks 1-10 --concurrency 5 \
+  --save agents/browser/evals/.reports/full.jsonl                                    # tasks bu2-001 to bu2-010
+uv run --env-file .env python -m agents.browser.evals.run --tasks all --concurrency 5 \
+  --save agents/browser/evals/.reports/full.jsonl                                    # all 200; skips the saved ones
+```
+
+- `--tasks` takes `all`, a number range such as `1-10`, or a comma list of ids such as `bu2-052,bu2-007`. The
+  default is `bu2-052`.
+- `--concurrency` is how many tasks run at once (default 1). Each has its own browser and its own judge process.
+- `--save FILE` appends one JSON line to FILE as soon as a task is judged: score, result and judge evidence per
+  rubric item, agent and judge cost, model requests, agent run time. Tasks already in FILE are skipped, so
+  repeating the command resumes an interrupted run. The file holds judge evidence: keep it in `evals/.reports/`.
+  Use one file per model, and one trial.
+- A task that fails (request limit, model error, the 3600 s timeout, judge error) does not stop the others and is
+  not saved, so a repeated command runs it again. The run ends with a summary: failures by kind, mean score with
+  and without failures counted as 0, total cost and wall time.
+
+The full 200-task run of `6.1-terra-codex` (mean score 0.38) is in [evals/runs/full-benchmark.md](evals/runs/full-benchmark.md).
 
 Baseline (2026-11-26, 3 trials): mean score 0.72 (0.70, 0.86, 0.60). The parameters and the result per rubric item
 are in [evals/runs/README.md](evals/runs/README.md). Save a run's full report to `evals/.reports/` (gitignored): it
