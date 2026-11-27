@@ -5,7 +5,7 @@ import pytest
 from pydantic_ai import Agent
 from pydantic_ai.models.test import TestModel
 
-from agents.browser.agent import agent, trace_to_logfire
+from agents.browser.agent import agent, configured, trace_to_logfire
 
 
 def test_agent_runs_offline():
@@ -35,3 +35,12 @@ def test_tracing_without_a_token_is_silent(monkeypatch, tmp_path, capsys):
 def test_reads_the_first_quote_on_quotes_toscrape():
     answer = agent.run_sync('Who wrote the first quote on https://quotes.toscrape.com/ ?').output
     assert 'Einstein' in answer
+
+
+def test_the_default_config_entry_is_sonnet():
+    assert (agent.model, agent.name) == ('anthropic:claude-sonnet-5-5', 'browser-agent-sonnet')
+
+
+def test_a_config_key_picks_the_model_and_name():
+    terra = configured('6.1-terra')
+    assert (terra.model, terra.name) == ('openai:gpt-6.1-terra', 'browser-agent-terra')

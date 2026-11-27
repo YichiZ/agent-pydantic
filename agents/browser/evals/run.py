@@ -1,5 +1,6 @@
 """Browser agent eval on BU Bench task 52 (../docs/eval-plan.md).  uv run --env-file .env python -m agents.browser.evals.run"""
 
+import argparse
 import asyncio
 import base64
 import hashlib
@@ -10,16 +11,18 @@ import sys
 import tempfile
 from collections.abc import Sequence
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
 from genai_prices import Usage, calc_price
+from pydantic_ai import Agent
 from pydantic_ai.messages import ModelMessage, TextPart, ToolCallPart, ToolReturnPart
 from pydantic_evals import Case, Dataset
 from pydantic_evals.evaluators import EvaluationReason, Evaluator, EvaluatorContext
 
-from agents.browser.agent import agent, trace_to_logfire
+from agents.browser.agent import CONFIG, agent, configured, trace_to_logfire
 
 TASK_ID = 'bu2-052'
 BENCHMARK = Path(__file__).parent / '.benchmark'  # the user's clone; gitignored
@@ -62,7 +65,7 @@ def trace(messages: Sequence[ModelMessage], answer: str) -> dict:
     return {'agent_steps': steps, 'final_result': answer, 'screenshots_b64': []}
 
 
-async def run(prompt: str) -> dict:
+async def run(prompt: str, agent: Agent = agent) -> dict:
     result = await agent.run(prompt)
     # The judge ignores keys it does not know, so the agent's cost rides along to the evaluator. A model with no
     # known price has no cost: report 0 rather than lose the run.
@@ -97,17 +100,23 @@ class BUBenchJudge(Evaluator):
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog='python -m agents.browser.evals.run')
+    parser.add_argument('trials', nargs='?', type=int, default=1)
+    parser.add_argument('--model', choices=list(CONFIG['models']), default=CONFIG['default'],
+                        help='an entry of agents/browser/config.yaml (default: %(default)s)')
+    args = parser.parse_args(argv)  # a mistyped key stops here, before anything is spent
+    chosen = configured(args.model)
     load_dotenv()  # ANTHROPIC_API_KEY, OPENAI_API_KEY and LOGFIRE_TOKEN from .env; real env vars win
     trace_to_logfire()
-    args = sys.argv[1:] if argv is None else argv
-    trials = int(args[0]) if args else 1
     if not BENCHMARK.exists():
         print(f'Clone the benchmark first:\n  git clone https://github.com/browser-use/benchmark {BENCHMARK}\n'
               f'  git -C {BENCHMARK} checkout {COMMIT}', file=sys.stderr)
         return 2
     dataset = Dataset(name='bu_bench_v2', cases=[Case(name=TASK_ID, inputs=task_text())], evaluators=[BUBenchJudge()])
     # One trial at a time: parallel trials would hammer web.archive.org.
-    dataset.evaluate_sync(run, repeat=trials, max_concurrency=1).print(include_reasons=True)
+    print(f'model {args.model}: {chosen.model}, agent {chosen.name}')  # every saved report says what produced it
+    report = dataset.evaluate_sync(partial(run, agent=chosen), task_name='run', repeat=args.trials, max_concurrency=1)
+    report.print(include_reasons=True)
     return 0
 
 
