@@ -1,6 +1,6 @@
 # The models the browser agent can run on. `model` is the full Pydantic AI model string; `name` is the agent's
-# name in traces. Chat uses `default`; the eval picks an entry with --model.
-default: sonnet-5.5
+# name in traces. Chat and the eval use `default` unless --model picks another entry.
+default: 6.1-terra-codex
 
 models:
   sonnet-5.5:
