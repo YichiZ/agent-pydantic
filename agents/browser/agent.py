@@ -1,5 +1,6 @@
 """Browser agent: chat with an agent that browses the web.  uv run python -m agents browser"""
 
+import argparse
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -36,7 +37,11 @@ def trace_to_logfire() -> None:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    load_dotenv()  # ANTHROPIC_API_KEY and LOGFIRE_TOKEN from .env; real env vars win
+    parser = argparse.ArgumentParser(prog='browser', description='Chat with the browser agent.')
+    parser.add_argument('--model', choices=list(CONFIG['models']), default=CONFIG['default'],
+                        help='an entry of agents/browser/config.yaml (default: %(default)s)')
+    args = parser.parse_args(argv)  # a mistyped key stops here, before the chat starts
+    load_dotenv()  # API keys and LOGFIRE_TOKEN from .env; real env vars win
     trace_to_logfire()
-    agent.to_cli_sync(prog_name='browser')
+    configured(args.model).to_cli_sync(prog_name='browser')
     return 0

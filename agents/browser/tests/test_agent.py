@@ -1,11 +1,11 @@
-import os
 import warnings
+from pathlib import Path
 
 import pytest
 from pydantic_ai import Agent
 from pydantic_ai.models.test import TestModel
 
-from agents.browser.agent import agent, configured, trace_to_logfire
+from agents.browser.agent import agent, configured, main, trace_to_logfire
 
 
 def test_agent_runs_offline():
@@ -29,18 +29,28 @@ def test_tracing_without_a_token_is_silent(monkeypatch, tmp_path, capsys):
     assert capsys.readouterr() == ('', '')
 
 
-# Live: real model, real browser. Run with `uv run --env-file <path to .env> pytest -m e2e agents/browser`.
+# Live: real model, real browser, on the default entry (the Codex login). Run with `uv run pytest -m e2e agents/browser`.
 @pytest.mark.e2e
-@pytest.mark.skipif(not os.environ.get('ANTHROPIC_API_KEY'), reason='ANTHROPIC_API_KEY is not set')
+@pytest.mark.skipif(not Path('~/.codex/auth.json').expanduser().exists(), reason='no Codex CLI login')
 def test_reads_the_first_quote_on_quotes_toscrape():
     answer = agent.run_sync('Who wrote the first quote on https://quotes.toscrape.com/ ?').output
     assert 'Einstein' in answer
 
 
-def test_the_default_config_entry_is_sonnet():
-    assert (agent.model, agent.name) == ('anthropic:claude-sonnet-5-5', 'browser-agent-sonnet')
+def test_the_default_config_entry_is_terra_on_codex():
+    assert (agent.model, agent.name) == ('openai-codex:gpt-6.1-terra', 'browser-agent-terra-codex')
 
 
 def test_a_config_key_picks_the_model_and_name():
     terra = configured('6.1-terra')
     assert (terra.model, terra.name) == ('openai:gpt-6.1-terra', 'browser-agent-terra')
+
+
+def test_chat_runs_on_the_default_or_on_the_model_flag(monkeypatch):
+    monkeypatch.setattr('agents.browser.agent.trace_to_logfire', lambda: None)
+    chatted = []
+    monkeypatch.setattr(Agent, 'to_cli_sync', lambda self, **kwargs: chatted.append(self.name))
+    assert main([]) == main(['--model', 'sonnet-5.5']) == 0
+    assert chatted == ['browser-agent-terra-codex', 'browser-agent-sonnet']
+    with pytest.raises(SystemExit):  # a mistyped key stops before the chat starts
+        main(['--model', 'nope'])

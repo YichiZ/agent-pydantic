@@ -5,18 +5,18 @@ An agent you chat with in the terminal that browses the web in a real browser. I
 `pydantic-ai-harness`, and nothing else: see `agent.py`.
 
 The model and the agent's name come from [config.yaml](config.yaml): one entry per model, each with the full
-Pydantic AI model string and a name, and a `default`. Chat runs on the default (Sonnet 5.5); the eval can pick
-another entry with `--model`. The `6.1-terra-codex` entry runs gpt-6.1-terra on a Codex/ChatGPT
-subscription (the Codex CLI login) instead of `OPENAI_API_KEY`; the cost it reports is then the API-equivalent
-price, not money spent.
+Pydantic AI model string and a name, and a `default`. Chat and the eval run on the default unless `--model` picks
+another entry. The default is `6.1-terra-codex`: gpt-6.1-terra on a Codex/ChatGPT subscription (the Codex CLI
+login) instead of `OPENAI_API_KEY`; the cost it reports is then the API-equivalent price, not money spent.
 
 It can open any public page; private and loopback addresses are blocked. The browser closes after each
 turn, so the conversation carries between turns but logins and open pages do not.
 
 ```bash
-uv run python -m agents browser                            # chat; needs ANTHROPIC_API_KEY in .env
+uv run python -m agents browser                            # chat on the default; needs the Codex CLI login
+uv run python -m agents browser --model sonnet-5.5         # chat on another entry; this one needs ANTHROPIC_API_KEY in .env
 uv run pytest agents/browser                                # offline test, no API key, no browser
-uv run --env-file .env pytest -m e2e agents/browser         # live test against quotes.toscrape.com
+uv run pytest -m e2e agents/browser                         # live test against quotes.toscrape.com, on the default
 ```
 
 ## Eval
@@ -33,10 +33,10 @@ The eval measures three things for each trial, and a recorded run should give al
 
 A change to the agent or its model is judged on all three, not on the score alone.
 
-A trial costs about $4 for the agent plus one OpenAI
-judge call; the report shows both as `agent_cost_usd` and `judge_cost_usd`. A trial stops with an
-error after 200 model requests (`REQUEST_LIMIT` in `evals/run.py`). It needs `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` in `.env`;
-with `--model 6.1-terra` the agent runs on OpenAI too. The cost figure is for the default model.
+A trial costs one OpenAI judge call (about $0.05) plus the agent: nothing on the default (the Codex subscription),
+about $0.20 with `--model 6.1-terra` and about $4 with `--model sonnet-5.5`. The report shows both as
+`agent_cost_usd` and `judge_cost_usd`. A trial stops with an error after 200 model requests (`REQUEST_LIMIT` in
+`evals/run.py`). The judge needs `OPENAI_API_KEY` in `.env`; `--model sonnet-5.5` also needs `ANTHROPIC_API_KEY`.
 
 ```bash
 git clone https://github.com/browser-use/benchmark agents/browser/evals/.benchmark   # once; gitignored
@@ -67,7 +67,7 @@ uv run --env-file .env python -m agents.browser.evals.run --tasks all --concurre
 
 The full 200-task run of `6.1-terra-codex` (mean score 0.38) is in [evals/runs/full-benchmark.md](evals/runs/full-benchmark.md).
 
-Baseline (2026-11-26, 3 trials): mean score 0.72 (0.70, 0.86, 0.60). The parameters and the result per rubric item
+Baseline on `sonnet-5.5` (2026-11-26, 3 trials): mean score 0.72 (0.70, 0.86, 0.60). The parameters and the result per rubric item
 are in [evals/runs/README.md](evals/runs/README.md). Save a run's full report to `evals/.reports/` (gitignored): it
 paraphrases the benchmark's rubric, so only scores and per-item results are committed.
 
@@ -89,9 +89,9 @@ the repo root.
 
 Each run then shows up in the project's Live view under the service `browser`, as one trace:
 
-- `invoke_agent browser-agent-sonnet`: the whole run, named after the config entry, with the final output and token usage.
-- `chat claude-sonnet-5-5`: one per model request, with the messages sent and the reply. On the default model the
-  HTTP call to Anthropic is the `anthropic.messages.create` span under it.
+- `invoke_agent browser-agent-terra-codex`: the whole run, named after the config entry, with the final output and
+  token usage.
+- `chat gpt-6.1-terra`: one per model request, with the messages sent and the reply.
 - `execute_tool <tool>`: one per tool call, with its arguments and result. A failed call is not marked as an error:
   the error text is the result the model got back.
 - `browser <action>`: the browser operation under each tool call, with `browser.outcome` set to `ok` or `error`.
